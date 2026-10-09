@@ -18,7 +18,7 @@ Revision: `main` @ `5ff58a7`. Ordered by engineering impact. Each item says how 
 | --- | --- | --- |
 | ~~Q5~~ | **Resolved:** `Chain` makes the first middleware outermost, so RequestID wraps RequestLog wraps routes (`middleware.go:10-18`, `middleware_test.go:11-45`) |  |
 | Q6 | How does `/api/` pick a remote backend (path prefix per remote?), what claims does the signed JWT carry, and which algorithm (HMAC given the 32-byte signing keys)? | `handler/proxy.go`, `proxy_test.go`, `config.go` |
-| Q7 | **Partly resolved:** the session stores only `User{Email}` (`session.go:58-61`). Open: does sign-in read Edupass groups/roles at all (e.g. reject unknown roles, staff-4 conflict fixture), and where would authorisation live? | `handler/auth.go`, `auth_test.go`, mock `provider.ts` (batch 3) |
+| ~~Q7~~ | **Resolved:** sign-in decodes only the `email` claim and stores `User{Email}`; Edupass `groups`, `sub` and `name` are ignored and no user is rejected for role (`auth.go:235-249`). Follow-up in Q26 |  |
 | Q8 | **Resolved (server side):** tokens are minted into the page (`index.go:44`) but `VerifyCSRFToken` has no non-test caller; only `SameSite=Lax` protects unsafe requests. Open: is enforcement planned, and which header will the host use? | maintainers; host fetch code |
 | Q9 | Is `/login` (frontend) and an unauthenticated redirect enforced server-side, or only in the SPA? | `handler/index.go`, `containers/LoginView.tsx`, `RootLayout.tsx` |
 | Q10 | Route `/students/*` renders a local placeholder, while config defines a Student Insights (`si`) remote. Is wiring pending? | `App.tsx`, `index.go` remote list |
@@ -35,3 +35,7 @@ Revision: `main` @ `5ff58a7`. Ordered by engineering impact. Each item says how 
 | Q22 | No logout route and no absolute session lifetime: an active session never ends except by 30m idle. Is this the agreed policy? | `handler.go:93-105`, `middleware/session.go`; security review |
 | Q23 | Every cookieless request stores a new 3h session; memstore never sweeps unread expired entries. Acceptable for probes/bots in production (Valkey memory) and long dev runs? | `middleware/session.go:65`, `memstore.go` |
 | Q24 | Concurrent requests on one session are last-write-wins over the whole snapshot (no locking/versioning). Fine while only sign-in mutates; revisit if more state is stored | `middleware/session.go:65-129` |
+| Q25 | Callback guard branches have no named tests: no pending login, state mismatch, provider `error` param, ID token verification failure, nonce mismatch, missing email (`auth.go:109-247`). Worth adding before changing sign-in | `auth_test.go` |
+| Q26 | Any Edupass user with an email can sign in; mock fixtures (staff-4 role conflict, staff-7 non-TW role, staff-5 `TWSTG`) imply planned role parsing and rejection. What is the intended authorisation model and where should it live? | maintainers; `auth.go:243-249` |
+| Q27 | No refresh token use, no stored ID token, no logout (local or Edupass). Users re-authenticate after 30m idle. Intended? | `auth.go`, `workflows/edupass-sign-in.md` A4 |
+| Q28 | `email_verified` is not checked; does Edupass guarantee verified emails? | Edupass docs (external) |

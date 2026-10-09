@@ -3,33 +3,32 @@
 - **Repo:** `teacher-workspace` (local clone at `~/teacher-workspace`), module `github.com/String-sg/teacher-workspace`
 - **Branch / revision:** analysed `main` @ `5ff58a78d09a37a6d662794297d7cdf70aeedb91`; docs live on branch `docs/engineering-onboarding` (user pushes to remote `fork`)
 - **Objective:** evidence-backed onboarding knowledge base per `CODEBASE_MASTER_PROMPT.md`
-- **Completed (2026-10-09):** Phase 0 (inventory); Phase 1 batch 1 (startup, config, middleware composition); Phase 2 batch 2 (sessions and CSRF)
+- **Completed (2026-10-09):** Phase 0 (inventory); batch 1 (startup, config, middleware composition); batch 2 (sessions and CSRF); batch 3 (Edupass sign-in)
 - **Working constraints:** read-only discovery of the user's folder; no git or shell commands run on the user's behalf. Docs written only to `docs/engineering-onboarding/`. After each batch that changes files, give the user copy-paste `git add` / `git commit -m '...'` (single quotes, conventional commit with backticked scope) / `git push -u fork docs/engineering-onboarding`.
 
 ## Coverage highlights
 
-- Fully read: `main.go`, `handler.go`, `config.go`, `dotenv/*`, `middleware.go`, `middleware/session.go`, `session/session.go`, `session/csrf.go`, `memstore.go`, `valkeystore.go`, `random.go`; `proxy.go` L25-78; host bootstrap/routes/preloaded state; mock-edupass entry/router; all CI/CD, Docker, tooling, ADRs.
-- Not yet read: `auth.go` (call sites only), `index.go` (call sites only), rest of `proxy.go`, `htmlutil`, `httputil`, `requestid.go`, `requestlog.go`, `pkg/require`, most test bodies, host components/containers, mock `provider.ts` / `config.ts`.
-- See `03-coverage-ledger.md` (server source 12/21 inspected, 1 partial).
+- Fully read: `main.go`, `handler.go`, `config.go`, `dotenv/*`, `middleware.go`, `middleware/session.go`, `session/*.go`, both stores, `random.go`, `auth.go`; `proxy.go` L25-78; host bootstrap/routes/preloaded state/`LoginView`; mock-edupass `index.ts`, `app.ts`, `provider.ts`, `config.ts`; all CI/CD, Docker, tooling, ADRs.
+- Not yet read: `index.go` (call sites only), rest of `proxy.go`, `htmlutil`, `httputil`, `requestid.go`, `requestlog.go`, `pkg/require`, most test bodies, other host containers/components.
+- See `03-coverage-ledger.md` (server source 13/21 inspected, 1 partial).
 
 ## Key discoveries (evidence-backed)
 
-1. Routes: `/static/` (no session); under Session: `GET /auth/edupass`, `GET /auth/edupass/callback`, `/api/`, `/`. RequestID outermost, then RequestLog. `handler.go:93-105`, `middleware.go:10-18`.
-2. Config: defaults, then CWD `.env` (real env wins), then `Validate()` which joins all errors and loads Edupass credentials. Edupass has no defaults. Exactly two remotes, all-or-none config. `config.go`.
-3. Sessions: JSON snapshot `{id, csrf_token, user{email}, data}` in memory or Valkey (`session:<id>`); saved on every request before first write; sliding idle TTL 3h anonymous / 30m signed in; `SetUser` rotates ID and CSRF secret and clears data; no logout, no absolute lifetime. `subsystems/sessions.md`.
-4. **CSRF tokens are minted into the page but never verified** in server code (Q8).
-5. **`/api/` proxy forwards any caller with a signed HS256 JWT (`iss=tw`, `aud=pg|si`, `iat`, `exp`), with no session check and no user claim** (`proxy.go:25-78`). Conflicts with ADR-0001 (Q21). Highest-impact finding so far.
+1. Routes: `/static/` (no session); under Session: `GET /auth/edupass`, `GET /auth/edupass/callback`, `/api/`, `/`. RequestID outermost, then RequestLog. `handler.go:93-105`.
+2. Config: defaults, then CWD `.env` (real env wins), then `Validate()` which joins errors and loads Edupass credentials. Exactly two remotes. `config.go`.
+3. Sessions: JSON snapshot in memory or Valkey; saved every request; sliding idle TTL 3h anonymous / 30m signed in; `SetUser` rotates ID and CSRF secret; no logout. `subsystems/sessions.md`.
+4. Sign-in: OIDC code flow + PKCE S256 + state + nonce; `client_secret_post` or `private_key_jwt` (PS256, `x5t#S256`); only `email` kept; groups ignored, so any Edupass user with an email can sign in. Failures redirect to `/login?error=oauth2_callback_failed&return_to=...`. `workflows/edupass-sign-in.md`.
+5. **`/api/` proxy forwards any caller with an HS256 JWT (`iss=tw`, `aud=pg|si`, `iat`, `exp`), no session check, no user claim** (Q21). **CSRF tokens minted but never verified** (Q8).
 
 ## Top open questions
 
-Q21 (unauthenticated `/api/` proxy), Q1 (ADR-0001 image vs Dockerfile), Q7 (does sign-in use Edupass roles at all?), Q22 (no logout / absolute lifetime), Q16 (TTL rationale). Full list: `11-open-questions-and-discrepancies.md`.
+Q21 (unauthenticated `/api/` proxy), Q26 (authorisation model; groups ignored), Q25 (untested callback guards), Q22/Q27 (no logout, no refresh), Q1 (ADR-0001 image). Full list: `11-open-questions-and-discrepancies.md`.
 
 ## Recommended order (updated)
 
 | Order | Batch | Files |
 | --- | --- | --- |
-| **3 (next)** | **Edupass sign-in** | `handler/auth.go`, skim `handler/auth_test.go`; `apps/mock-edupass/src/provider.ts`, `src/config.ts`; skim `test/api.test.ts` |
-| 4 | Page render and static | `handler/index.go`, `htmlutil/template.go`, `httputil/*` |
+| **4 (next)** | **Page render and static** | `handler/index.go`, `htmlutil/template.go`, `httputil/httputil.go`, `httputil/error.go`; skim `index_test.go`, `template_test.go`, `httputil_test.go` |
 | 5 | API proxy and signed tokens | rest of `handler/proxy.go`, `proxy_test.go`, `pkg/require` |
 | 6 | Request ID / logging | `middleware/requestid.go`, `requestlog.go` |
 | 7 | Host shell UI | `containers/*`, `components/*` (skip `ui/`) |
@@ -38,10 +37,10 @@ Q21 (unauthenticated `/api/` proxy), Q1 (ADR-0001 image vs Dockerfile), Q7 (does
 
 ## Next batch (precise)
 
-**PHASE 2/3, batch 3: Edupass sign-in.** Read `server/internal/handler/auth.go` in full and skim `auth_test.go`; read mock-edupass `provider.ts` and `config.ts`. Produce `workflows/edupass-sign-in.md` with a sequence diagram (browser, TW, Edupass) covering state/nonce/PKCE, token exchange (`client_secret_post` and `private_key_jwt`), ID token verification, claims to `User`, `return_to` safety, and failure paths. Resolve Q7 and Q9; start `04-api-catalog.md` rows for the two auth routes.
+**Batch 4: page render and static.** Read the files in row 4 above. Produce `subsystems/page-render.md` covering dev vs prod templating, the preloaded-state JSON (`csrfToken`, `remotes` from config), escaping, the `/static/` handler, and the shared response helpers (`RenderPlain`, `RenderJSON`, `Redirect`). Resolve Q9 (is `/login` or any redirect enforced server-side) and Q10 (Student Insights remote vs local `/students` placeholder). Fill the `/` and `/static/*` rows of `04-api-catalog.md`.
 
 Suggested command: `CONTINUE`
 
 ## Diagram validation
 
-All Mermaid blocks in `00`, `01`, `02`, `subsystems/sessions.md` parse with mermaid 11.4.1. Visual layout not reviewed.
+All Mermaid blocks in `00`, `01`, `02`, `subsystems/sessions.md`, `workflows/edupass-sign-in.md` parse with mermaid 11.4.1. Visual layout not reviewed.
