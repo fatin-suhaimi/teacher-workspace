@@ -31,13 +31,13 @@ flowchart LR
 
 | Fact | Status | Evidence |
 | --- | --- | --- |
-| Three stages, runtime runs as non-root `zero` | Verified | `Dockerfile:4-71` |
-| cgo build, because the Valkey client (`valkey-glide`) ships native libraries; hence a glibc Debian runtime rather than a static or Alpine image | Verified (cgo), Inferred (reason for Debian) | `Dockerfile:41`, `CONTRIBUTING.md` (cgo note) |
-| `ca-certificates` installed so the binary can open TLS connections (Valkey, Edupass); fixed in 0.0.2 | Verified | `Dockerfile:57-59`, `CHANGELOG.md` (#153) |
+| Three stages, runtime runs as non-root `zero` | Verified | `Dockerfile:1-81` |
+| cgo build, because the Valkey client (`valkey-glide`) ships native libraries; hence a glibc Debian runtime rather than a static or Alpine image | Verified (cgo), Inferred (reason for Debian) | `Dockerfile:39`, `CONTRIBUTING.md` (cgo note) |
+| `ca-certificates` installed so the binary can open TLS connections (Valkey, Edupass); fixed in 0.0.2 | Verified | `Dockerfile:64-66`, `CHANGELOG.md` (#153) |
 | pnpm is downloaded as an arm64 tarball with `wget`, **without checksum verification**, so the build only works on arm64 builders | Verified | `Dockerfile:17-19` (Q13, Q39) |
 | `.env*`, `node_modules`, `dist`, `.git`, `.github` are excluded from the build context | Verified | `.dockerignore` |
 | No `HEALTHCHECK` in the image, and no health route in the server | Verified | `Dockerfile`, `handler.go:93-105` (Q11) |
-| Base images referenced by tag, not digest | Verified | `Dockerfile:6, 39, 51` |
+| Base images referenced by tag, not digest | Verified | `Dockerfile:6, 37, 55` |
 
 Runtime configuration that the deploy environment must supply (the image sets only `TW_ENV`, `TW_BUILD_DIR`, `TW_SERVER_PORT`): every `TW_EDUPASS_*` value (no defaults), `TW_SESSION_STORE_PROVIDER=valkey` plus `TW_SESSION_VALKEY_URL` for any multi-instance deployment, the `TW_REMOTE_*` triples for each remote, and optionally timeouts, TTLs and log level. Full reference: `02-architecture.md` section 6. Secret values may be passed as `*_FILE` paths (Edupass secret, key, certificate), which suits mounted secrets (`config.go:253-258`).
 
@@ -136,7 +136,7 @@ Only the TW container and its outbound dependencies are evidenced by code. The n
 | Install scripts only allowed for `core-js` (`allowBuilds`) | `pnpm-workspace.yaml` |
 | Local tools pinned and checksum-verified by `mise.lock` (lockfile platform: `macos-arm64` only, so other platforms are not covered) | `mise.toml` |
 | GitHub Actions pinned by SHA | `ci.yml`, `release.yml` |
-| Gap: pnpm tarball in the Dockerfile is not checksum-verified; base images not pinned by digest | `Dockerfile` (Q39) |
+| Gap: pnpm tarball in the Dockerfile is not checksum-verified; base images not pinned by digest | `Dockerfile:6, 17-19, 37, 55` (Q39) |
 
 ## 7. Where to change things
 

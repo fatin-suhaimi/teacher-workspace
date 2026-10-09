@@ -1,6 +1,6 @@
 # 03 Coverage Ledger
 
-Revision: `main` @ `5ff58a7`. Last updated: batch 8, delivery and local development (2026-10-09). All server source files and all hand-written host source files are now inspected; only shadcn-generated `components/ui/*` remain. Statuses: `inspected`, `partially inspected`, `identified`, `excluded (reason)`, `inaccessible`. "Inspected" means read in full at this revision, not that every call has been traced.
+Revision: `main` @ `5ff58a7`. Last updated: batch 9, security consolidation (2026-10-09; no new files read, load-bearing lines re-checked). All server source files and all hand-written host source files are now inspected; only shadcn-generated `components/ui/*` remain. Statuses: `inspected`, `partially inspected`, `identified`, `excluded (reason)`, `inaccessible`. "Inspected" means read in full at this revision, not that every call has been traced.
 
 ## Summary
 

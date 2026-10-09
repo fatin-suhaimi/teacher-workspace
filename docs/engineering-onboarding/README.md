@@ -3,7 +3,7 @@
 Evidence-backed onboarding docs for Teacher Workspace, built incrementally following `CODEBASE_MASTER_PROMPT.md` (in the claude.ai Project "Teacher Workspace 2.0").
 
 - **Revision analysed:** `main` @ `5ff58a78d09a37a6d662794297d7cdf70aeedb91` (read from `.git/refs/heads/main`; uncommitted local changes were not checked)
-- **Current phase:** Phase 2 in progress. Done: Phase 0, batch 1 (startup/config), batch 2 (sessions and CSRF), batch 3 (Edupass sign-in), batch 4 (page render and static), batch 5 (API proxy), batch 6 (request ID and logging), batch 7 (host shell UI), batch 8 (delivery and local development). All server source and all hand-written host source are now inspected.
+- **Current phase:** Phase 2 in progress. Done: Phase 0, batch 1 (startup/config), batch 2 (sessions and CSRF), batch 3 (Edupass sign-in), batch 4 (page render and static), batch 5 (API proxy), batch 6 (request ID and logging), batch 7 (host shell UI), batch 8 (delivery and local development), batch 9 (security consolidation). All server source and all hand-written host source are now inspected.
 - **Last updated:** 2026-10-09
 
 ## Status labels used throughout
@@ -26,7 +26,7 @@ Evidence-backed onboarding docs for Teacher Workspace, built incrementally follo
 | [04-api-catalog.md](04-api-catalog.md) | Every route/interface | Server routes complete; mock-edupass routes listed |
 | 05-feature-to-code-map.md | Feature to code traceability | Not started |
 | 06-data-model.md | Session data, tokens, stored state | Not started |
-| 07-security-and-auth.md | Edupass OIDC, sessions, CSRF, signed tokens | Not started |
+| [07-security-and-auth.md](07-security-and-auth.md) | Trust boundaries, identity flow, controls in place, authorisation gap, sensitive data, prioritised risk register (R1-R14) | Batch 9 |
 | [08-infrastructure-and-operations.md](08-infrastructure-and-operations.md) | Image build, CI, release, runtime topology (provisional), operational characteristics, supply-chain guards | Batch 8 |
 | [09-local-development-and-testing.md](09-local-development-and-testing.md) | Toolchain, setup, running all local processes, signing in, tests, lint/format/hooks, conventions, troubleshooting | Batch 8 |
 | 10-business-glossary.md | Domain terms | Not started |
@@ -46,5 +46,6 @@ Evidence-backed onboarding docs for Teacher Workspace, built incrementally follo
 2. `01-repository-map.md`
 3. `02-architecture.md`
 4. `09-local-development-and-testing.md` (get it running)
-5. Repo's own docs: `CONTRIBUTING.md`, `docs/adr/0001-*`, `docs/adr/0002-*`
-6. `13-session-handoff.md` for what to look at next
+5. `07-security-and-auth.md` (the risk register is the best summary of what is unfinished)
+6. Repo's own docs: `CONTRIBUTING.md`, `docs/adr/0001-*`, `docs/adr/0002-*`
+7. `13-session-handoff.md` for what to look at next
