@@ -1,13 +1,18 @@
 package config
 
 import (
+	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -59,6 +64,9 @@ func Default() Config {
 				Prefix: "session:",
 			},
 		},
+		Edupass: EdupassConfig{
+			ClientAuthMethod: OAuth2ClientAuthMethodClientSecretPost,
+		},
 		RemoteApps: RemoteAppsConfig{
 			SignedTokenTTL: 1 * time.Minute,
 		},
@@ -67,7 +75,7 @@ func Default() Config {
 
 // Validate returns an error describing every invalid field, or nil if the
 // configuration is valid.
-func (cfg Config) Validate() error {
+func (cfg *Config) Validate() error {
 	var errs []error
 
 	if cfg.Env != EnvDevelopment && cfg.Env != EnvProduction {
@@ -218,6 +226,19 @@ func (cfg SessionValkeyConfig) validate() error {
 	return errors.Join(errs...)
 }
 
+type OAuth2ClientAuthMethod string
+
+const (
+	OAuth2ClientAuthMethodClientSecretPost OAuth2ClientAuthMethod = "client_secret_post"
+	OAuth2ClientAuthMethodPrivateKeyJWT    OAuth2ClientAuthMethod = "private_key_jwt"
+)
+
+type EdupassClientCredentials struct {
+	Secret                string
+	Key                   *rsa.PrivateKey
+	CertificateThumbprint string
+}
+
 // EdupassConfig represents the configuration for the Edupass identity provider.
 type EdupassConfig struct {
 	IssuerURL *url.URL `dotenv:"TW_EDUPASS_ISSUER_URL"`
@@ -225,12 +246,21 @@ type EdupassConfig struct {
 	TokenURL  *url.URL `dotenv:"TW_EDUPASS_TOKEN_URL"`
 	JWKSURL   *url.URL `dotenv:"TW_EDUPASS_JWKS_URL"`
 
-	ClientID     string   `dotenv:"TW_EDUPASS_CLIENT_ID"`
-	ClientSecret string   `dotenv:"TW_EDUPASS_CLIENT_SECRET"`
-	RedirectURL  *url.URL `dotenv:"TW_EDUPASS_REDIRECT_URL"`
+	ClientID    string   `dotenv:"TW_EDUPASS_CLIENT_ID"`
+	RedirectURL *url.URL `dotenv:"TW_EDUPASS_REDIRECT_URL"`
+
+	ClientAuthMethod      OAuth2ClientAuthMethod `dotenv:"TW_EDUPASS_CLIENT_AUTH_METHOD"`
+	ClientSecret          string                 `dotenv:"TW_EDUPASS_CLIENT_SECRET"`
+	ClientSecretFile      string                 `dotenv:"TW_EDUPASS_CLIENT_SECRET_FILE"`
+	ClientPrivateKey      string                 `dotenv:"TW_EDUPASS_CLIENT_PRIVATE_KEY"`
+	ClientPrivateKeyFile  string                 `dotenv:"TW_EDUPASS_CLIENT_PRIVATE_KEY_FILE"`
+	ClientCertificate     string                 `dotenv:"TW_EDUPASS_CLIENT_CERTIFICATE"`
+	ClientCertificateFile string                 `dotenv:"TW_EDUPASS_CLIENT_CERTIFICATE_FILE"`
+
+	ClientCredentials EdupassClientCredentials `dotenv:"-"`
 }
 
-func (cfg EdupassConfig) validate() error {
+func (cfg *EdupassConfig) validate() error {
 	var errs []error
 
 	if cfg.IssuerURL == nil {
@@ -264,21 +294,18 @@ func (cfg EdupassConfig) validate() error {
 		}
 	}
 	if cfg.JWKSURL == nil {
-		errs = append(errs, errors.New("TW_EDUPASS_JWKS_URI is required"))
+		errs = append(errs, errors.New("TW_EDUPASS_JWKS_URL is required"))
 	} else {
 		if cfg.JWKSURL.Scheme != "http" && cfg.JWKSURL.Scheme != "https" {
-			errs = append(errs, fmt.Errorf("TW_EDUPASS_JWKS_URI must use scheme http or https; got %q", cfg.JWKSURL))
+			errs = append(errs, fmt.Errorf("TW_EDUPASS_JWKS_URL must use scheme http or https; got %q", cfg.JWKSURL))
 		}
 		if cfg.JWKSURL.Host == "" {
-			errs = append(errs, fmt.Errorf("TW_EDUPASS_JWKS_URI must include host[:port]; got %q", cfg.JWKSURL))
+			errs = append(errs, fmt.Errorf("TW_EDUPASS_JWKS_URL must include host[:port]; got %q", cfg.JWKSURL))
 		}
 	}
 
 	if cfg.ClientID == "" {
 		errs = append(errs, errors.New("TW_EDUPASS_CLIENT_ID is required"))
-	}
-	if cfg.ClientSecret == "" {
-		errs = append(errs, errors.New("TW_EDUPASS_CLIENT_SECRET is required"))
 	}
 	if cfg.RedirectURL == nil {
 		errs = append(errs, errors.New("TW_EDUPASS_REDIRECT_URL is required"))
@@ -289,6 +316,111 @@ func (cfg EdupassConfig) validate() error {
 		if cfg.RedirectURL.Host == "" {
 			errs = append(errs, fmt.Errorf("TW_EDUPASS_REDIRECT_URL must include host[:port]; got %q", cfg.RedirectURL))
 		}
+	}
+
+	switch cfg.ClientAuthMethod {
+	case OAuth2ClientAuthMethodClientSecretPost:
+		if cfg.ClientSecret != "" && cfg.ClientSecretFile != "" {
+			errs = append(errs, errors.New("TW_EDUPASS_CLIENT_SECRET and TW_EDUPASS_CLIENT_SECRET_FILE are both set; set only one"))
+		}
+		if cfg.ClientSecret == "" && cfg.ClientSecretFile == "" {
+			errs = append(errs, errors.New("TW_EDUPASS_CLIENT_SECRET or TW_EDUPASS_CLIENT_SECRET_FILE is required for client_secret_post"))
+		}
+		if len(errs) > 0 {
+			return errors.Join(errs...)
+		}
+
+		clientSecret := cfg.ClientSecret
+		if cfg.ClientSecretFile != "" {
+			clientSecretFileContents, err := os.ReadFile(cfg.ClientSecretFile)
+			if err != nil {
+				return fmt.Errorf("TW_EDUPASS_CLIENT_SECRET_FILE: %w", err)
+			}
+			clientSecret = strings.TrimRight(string(clientSecretFileContents), "\r\n")
+			if clientSecret == "" {
+				return fmt.Errorf("TW_EDUPASS_CLIENT_SECRET_FILE: %s is empty", cfg.ClientSecretFile)
+			}
+		}
+		cfg.ClientCredentials = EdupassClientCredentials{Secret: clientSecret}
+
+	case OAuth2ClientAuthMethodPrivateKeyJWT:
+		if cfg.ClientPrivateKey != "" && cfg.ClientPrivateKeyFile != "" {
+			errs = append(errs, errors.New("TW_EDUPASS_CLIENT_PRIVATE_KEY and TW_EDUPASS_CLIENT_PRIVATE_KEY_FILE are both set; set only one"))
+		}
+		if cfg.ClientPrivateKey == "" && cfg.ClientPrivateKeyFile == "" {
+			errs = append(errs, errors.New("TW_EDUPASS_CLIENT_PRIVATE_KEY or TW_EDUPASS_CLIENT_PRIVATE_KEY_FILE is required for private_key_jwt"))
+		}
+		if cfg.ClientCertificate != "" && cfg.ClientCertificateFile != "" {
+			errs = append(errs, errors.New("TW_EDUPASS_CLIENT_CERTIFICATE and TW_EDUPASS_CLIENT_CERTIFICATE_FILE are both set; set only one"))
+		}
+		if cfg.ClientCertificate == "" && cfg.ClientCertificateFile == "" {
+			errs = append(errs, errors.New("TW_EDUPASS_CLIENT_CERTIFICATE or TW_EDUPASS_CLIENT_CERTIFICATE_FILE is required for private_key_jwt"))
+		}
+		if len(errs) > 0 {
+			return errors.Join(errs...)
+		}
+
+		privateKeyVariable := "TW_EDUPASS_CLIENT_PRIVATE_KEY"
+		privateKeyPEM := cfg.ClientPrivateKey
+		if cfg.ClientPrivateKeyFile != "" {
+			privateKeyVariable = "TW_EDUPASS_CLIENT_PRIVATE_KEY_FILE"
+			privateKeyFileContents, err := os.ReadFile(cfg.ClientPrivateKeyFile)
+			if err != nil {
+				return fmt.Errorf("TW_EDUPASS_CLIENT_PRIVATE_KEY_FILE: %w", err)
+			}
+			privateKeyPEM = strings.TrimRight(string(privateKeyFileContents), "\r\n")
+		}
+		privateKeyPEMBlock, _ := pem.Decode([]byte(privateKeyPEM))
+		if privateKeyPEMBlock == nil {
+			return fmt.Errorf("%s: not PEM", privateKeyVariable)
+		}
+		pkcs8PrivateKey, err := x509.ParsePKCS8PrivateKey(privateKeyPEMBlock.Bytes)
+		if err != nil {
+			return fmt.Errorf("%s: not PKCS#8", privateKeyVariable)
+		}
+		privateKey, isRSA := pkcs8PrivateKey.(*rsa.PrivateKey)
+		if !isRSA {
+			return fmt.Errorf("%s: not RSA, got %T", privateKeyVariable, pkcs8PrivateKey)
+		}
+		// RFC 7518, section 3.5 requires a key of 2048 bits or larger.
+		if privateKeyBits := privateKey.N.BitLen(); privateKeyBits < 2048 {
+			return fmt.Errorf("%s: %d bits, want at least 2048", privateKeyVariable, privateKeyBits)
+		}
+
+		certificateVariable := "TW_EDUPASS_CLIENT_CERTIFICATE"
+		certificatePEM := cfg.ClientCertificate
+		if cfg.ClientCertificateFile != "" {
+			certificateVariable = "TW_EDUPASS_CLIENT_CERTIFICATE_FILE"
+			certificateFileContents, err := os.ReadFile(cfg.ClientCertificateFile)
+			if err != nil {
+				return fmt.Errorf("TW_EDUPASS_CLIENT_CERTIFICATE_FILE: %w", err)
+			}
+			certificatePEM = strings.TrimRight(string(certificateFileContents), "\r\n")
+		}
+		certificatePEMBlock, _ := pem.Decode([]byte(certificatePEM))
+		if certificatePEMBlock == nil {
+			return fmt.Errorf("%s: not PEM", certificateVariable)
+		}
+		certificate, err := x509.ParseCertificate(certificatePEMBlock.Bytes)
+		if err != nil {
+			return fmt.Errorf("%s: not X.509: %w", certificateVariable, err)
+		}
+		if time.Now().After(certificate.NotAfter) {
+			return fmt.Errorf("%s: expired at %s", certificateVariable, certificate.NotAfter.Format(time.RFC3339))
+		}
+		if certificatePublicKey, isRSA := certificate.PublicKey.(*rsa.PublicKey); !isRSA || !certificatePublicKey.Equal(&privateKey.PublicKey) {
+			return fmt.Errorf("%s does not match %s", certificateVariable, privateKeyVariable)
+		}
+
+		certificateThumbprint := sha256.Sum256(certificate.Raw)
+		cfg.ClientCredentials = EdupassClientCredentials{
+			Key:                   privateKey,
+			CertificateThumbprint: base64.RawURLEncoding.EncodeToString(certificateThumbprint[:]),
+		}
+
+	default:
+		errs = append(errs, fmt.Errorf("TW_EDUPASS_CLIENT_AUTH_METHOD must be %q or %q; got %q",
+			OAuth2ClientAuthMethodClientSecretPost, OAuth2ClientAuthMethodPrivateKeyJWT, cfg.ClientAuthMethod))
 	}
 
 	return errors.Join(errs...)
