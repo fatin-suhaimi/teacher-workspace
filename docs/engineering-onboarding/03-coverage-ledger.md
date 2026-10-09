@@ -1,13 +1,13 @@
 # 03 Coverage Ledger
 
-Revision: `main` @ `5ff58a7`. Last updated: batch 4, page render and static (2026-10-09). Statuses: `inspected`, `partially inspected`, `identified`, `excluded (reason)`, `inaccessible`. "Inspected" means read in full at this revision, not that every call has been traced.
+Revision: `main` @ `5ff58a7`. Last updated: batch 5, API proxy (2026-10-09). Statuses: `inspected`, `partially inspected`, `identified`, `excluded (reason)`, `inaccessible`. "Inspected" means read in full at this revision, not that every call has been traced.
 
 ## Summary
 
 | Area | Files | Inspected | Partially | Identified only | Excluded |
 | --- | --- | --- | --- | --- | --- |
-| Server Go source (non-test) | 21 | 17 | 1 | 3 | 0 |
-| Server Go tests | 18 | 1 | 13 | 4 | 0 |
+| Server Go source (non-test) | 21 | 19 | 0 | 2 | 0 |
+| Server Go tests | 18 | 1 | 14 | 3 | 0 |
 | Host app source + config (excl. assets, dist) | 33 | 12 | 0 | 21 | 0 |
 | mock-edupass source + tests + config | 10 | 6 | 1 | 3 | 0 |
 | Build, CI/CD, tooling, root config | 22 | 15 | 0 | 3 | 4 (lockfiles, `.env`) |
@@ -28,8 +28,8 @@ Revision: `main` @ `5ff58a7`. Last updated: batch 4, page render and static (202
 | `server/internal/handler/auth_test.go` | S3 | partially inspected | all case names reviewed; some bodies sampled | workflows/edupass-sign-in |
 | `server/internal/handler/index.go` | S3 | inspected | `PreloadedState`, `Remote`, `index()`, `static` | subsystems/page-render |
 | `server/internal/handler/index_test.go` | S3 | partially inspected | case names reviewed; CSRF embedding case read | subsystems/page-render |
-| `server/internal/handler/proxy.go` | S3 | partially inspected | `proxy()` L25-78 read (routing by first path segment, HS256 JWT claims, no session check); `newRemoteBackendProxy` L81+ not read | sessions |
-| `server/internal/handler/proxy_test.go` | S3 | identified |  |  |
+| `server/internal/handler/proxy.go` | S3 | inspected | `proxy()`, `remoteBackend`, `newRemoteBackendProxy` (Rewrite, ModifyResponse, ErrorHandler) | workflows/api-proxy |
+| `server/internal/handler/proxy_test.go` | S3 | partially inspected | case names reviewed; JWT claims test read | workflows/api-proxy |
 | `server/internal/handler/handler_test.go` | S3 | identified | 16 bytes (package clause only, presumably) |  |
 | `server/internal/middleware/middleware.go` | S4 | inspected | `Middleware`, `Chain` (first = outermost) | 02 |
 | `server/internal/middleware/requestid.go` | S4 | identified | `RequestID` |  |
@@ -49,7 +49,7 @@ Revision: `main` @ `5ff58a7`. Last updated: batch 4, page render and static (202
 | `server/internal/httputil/httputil_test.go` | S6 | partially inspected | case names reviewed | subsystems/page-render |
 | `server/pkg/random/random.go` | S6 | inspected | `Alphanumeric` (crypto/rand, rejection sampling), `Base62`, `Base58` | sessions |
 | `server/pkg/random/random_test.go` | S6 | partially inspected | subtest names reviewed | sessions |
-| `server/pkg/require/require.go` | S6 | identified | no test file |  |
+| `server/pkg/require/require.go` | S6 | inspected | test-only assertion helpers (`Equal`, `NotEqual`, `True`, `False`, `NoError`, `HasError`) | workflows/api-proxy |
 
 ## Host frontend (`apps/host`)
 
@@ -111,7 +111,7 @@ Tracked from Phase 3 onward. Discovered so far (no flows traced yet):
 | --- | --- | --- | --- | --- |
 | `GET /auth/edupass` | `Handler.authEdupass` | yes | yes | yes |
 | `GET /auth/edupass/callback` | `Handler.authEdupassCallback` | yes | yes | yes |
-| `/api/` (all methods) | `Handler.proxy()` | no | no | no |
+| `/api/` (all methods) | `Handler.proxy()` | yes | yes | yes |
 | `/` (catch-all) | `Handler.index()` | yes | yes | yes |
 | `/static/` | `Handler.static` | yes | no (flowchart only) | yes |
 | mock-edupass `GET /health`, `GET /interaction/:uid`, OIDC endpoints | `createApp`, `oidc-provider` | partial | no | no |
