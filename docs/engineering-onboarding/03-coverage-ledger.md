@@ -1,14 +1,14 @@
 # 03 Coverage Ledger
 
-Revision: `main` @ `5ff58a7`. Last updated: batch 3, Edupass sign-in (2026-10-09). Statuses: `inspected`, `partially inspected`, `identified`, `excluded (reason)`, `inaccessible`. "Inspected" means read in full at this revision, not that every call has been traced.
+Revision: `main` @ `5ff58a7`. Last updated: batch 4, page render and static (2026-10-09). Statuses: `inspected`, `partially inspected`, `identified`, `excluded (reason)`, `inaccessible`. "Inspected" means read in full at this revision, not that every call has been traced.
 
 ## Summary
 
 | Area | Files | Inspected | Partially | Identified only | Excluded |
 | --- | --- | --- | --- | --- | --- |
-| Server Go source (non-test) | 21 | 13 | 1 | 7 | 0 |
-| Server Go tests | 18 | 1 | 10 | 7 | 0 |
-| Host app source + config (excl. assets, dist) | 33 | 10 | 0 | 23 | 0 |
+| Server Go source (non-test) | 21 | 17 | 1 | 3 | 0 |
+| Server Go tests | 18 | 1 | 13 | 4 | 0 |
+| Host app source + config (excl. assets, dist) | 33 | 12 | 0 | 21 | 0 |
 | mock-edupass source + tests + config | 10 | 6 | 1 | 3 | 0 |
 | Build, CI/CD, tooling, root config | 22 | 15 | 0 | 3 | 4 (lockfiles, `.env`) |
 | Repo docs | 7 | 6 | 1 | 0 | 0 |
@@ -26,8 +26,8 @@ Revision: `main` @ `5ff58a7`. Last updated: batch 3, Edupass sign-in (2026-10-09
 | `server/internal/handler/handler.go` | S3 | inspected | `Handler`, `New`, `Routes`, `newDevServerProxy` | 00, 01 |
 | `server/internal/handler/auth.go` | S3 | inspected | `authEdupass`, `authEdupassCallback`, `safeReturnTo`, `loginFailedURL`, session keys | workflows/edupass-sign-in |
 | `server/internal/handler/auth_test.go` | S3 | partially inspected | all case names reviewed; some bodies sampled | workflows/edupass-sign-in |
-| `server/internal/handler/index.go` | S3 | identified | `index`, likely `static`; issues `CSRFToken()` into preloaded state (L36-44) |  |
-| `server/internal/handler/index_test.go` | S3 | identified |  |  |
+| `server/internal/handler/index.go` | S3 | inspected | `PreloadedState`, `Remote`, `index()`, `static` | subsystems/page-render |
+| `server/internal/handler/index_test.go` | S3 | partially inspected | case names reviewed; CSRF embedding case read | subsystems/page-render |
 | `server/internal/handler/proxy.go` | S3 | partially inspected | `proxy()` L25-78 read (routing by first path segment, HS256 JWT claims, no session check); `newRemoteBackendProxy` L81+ not read | sessions |
 | `server/internal/handler/proxy_test.go` | S3 | identified |  |  |
 | `server/internal/handler/handler_test.go` | S3 | identified | 16 bytes (package clause only, presumably) |  |
@@ -43,10 +43,10 @@ Revision: `main` @ `5ff58a7`. Last updated: batch 3, Edupass sign-in (2026-10-09
 | `server/internal/session/memstore/memstore.go` | S5 | inspected | `Store`, `New`, `WithClock`, `Prepare`/`Commit`/`Drop` | sessions |
 | `server/internal/session/valkeystore/valkeystore.go` | S5 | inspected | `Store`, `New`, `WithPrefix`, GET / SET EX / DEL | sessions |
 | `server/internal/session/**/_test.go` (4 files) | S5 | partially inspected | all subtest names reviewed; valkeystore tests use testcontainers | sessions |
-| `server/internal/htmlutil/template.go` | S6 | identified | `Template`, `NewURLTemplate`, `NewFileTemplate` |  |
-| `server/internal/htmlutil/template_test.go` | S6 | identified |  |  |
-| `server/internal/httputil/httputil.go`, `error.go` | S6 | identified | `RenderPlain` |  |
-| `server/internal/httputil/httputil_test.go` | S6 | identified |  |  |
+| `server/internal/htmlutil/template.go` | S6 | inspected | `Template`, `URLTemplate`, `FileTemplate`, `fetchTimeout` | subsystems/page-render |
+| `server/internal/htmlutil/template_test.go` | S6 | partially inspected | case names reviewed | subsystems/page-render |
+| `server/internal/httputil/httputil.go`, `error.go` | S6 | inspected | `RenderPlain`, `RenderHTML`, `RenderJSON`, `Redirect`, `ErrorResponse`, header and MIME constants | subsystems/page-render |
+| `server/internal/httputil/httputil_test.go` | S6 | partially inspected | case names reviewed | subsystems/page-render |
 | `server/pkg/random/random.go` | S6 | inspected | `Alphanumeric` (crypto/rand, rejection sampling), `Base62`, `Base58` | sessions |
 | `server/pkg/random/random_test.go` | S6 | partially inspected | subtest names reviewed | sessions |
 | `server/pkg/require/require.go` | S6 | identified | no test file |  |
@@ -54,13 +54,14 @@ Revision: `main` @ `5ff58a7`. Last updated: batch 3, Edupass sign-in (2026-10-09
 ## Host frontend (`apps/host`)
 
 | Path | Status | Notes |
-| --- | --- | --- |
+| --- | --- | --- | --- |
 | `package.json`, `rsbuild.config.ts`, `tsconfig.json`, `index.html` | inspected | MF host `teacher_workspace`, `remotes: {}`, shared singletons; path alias `~/*`; `@mf-types` path |
 | `src/index.ts`, `src/bootstrap.tsx`, `src/App.tsx` | inspected | entry, `registerRemotes`, route table |
 | `src/stores/preloaded-state.ts` | inspected | `PreloadedState {csrfToken, remotes}`, runtime validation, throws if invalid |
 | `src/containers/StudentsView.tsx` | inspected | Placeholder heading only |
 | `src/containers/LoginView.tsx` | inspected | login link with `return_to`, error toast for `oauth2_callback_failed` |
-| `src/containers/{RootLayout,HomeView,NotFoundView,RemoteLoadFallbackView}.tsx` | identified |  |
+| `src/containers/RootLayout.tsx`, `RemoteLoadFallbackView.tsx` | inspected | layout (sidebar, welcome modal, no auth guard); remote error fallback | subsystems/page-render |
+| `src/containers/{HomeView,NotFoundView}.tsx` | identified |  |
 | `src/components/{AppCard,AppSection,ErrorBoundary,Sidebar,WelcomeModal}.tsx` | identified |  |
 | `src/components/ui/*.tsx` (9) | identified | shadcn-generated (CONTRIBUTING: regenerate, do not hand-edit); low review priority |
 | `src/hooks/use-mobile.ts`, `src/helpers/cn.ts`, `src/env.d.ts`, `src/App.css` | identified |  |
@@ -111,6 +112,6 @@ Tracked from Phase 3 onward. Discovered so far (no flows traced yet):
 | `GET /auth/edupass` | `Handler.authEdupass` | yes | yes | yes |
 | `GET /auth/edupass/callback` | `Handler.authEdupassCallback` | yes | yes | yes |
 | `/api/` (all methods) | `Handler.proxy()` | no | no | no |
-| `/` (catch-all) | `Handler.index()` | no | no | no |
-| `/static/` | `Handler.static` | no | no | no |
+| `/` (catch-all) | `Handler.index()` | yes | yes | yes |
+| `/static/` | `Handler.static` | yes | no (flowchart only) | yes |
 | mock-edupass `GET /health`, `GET /interaction/:uid`, OIDC endpoints | `createApp`, `oidc-provider` | partial | no | no |

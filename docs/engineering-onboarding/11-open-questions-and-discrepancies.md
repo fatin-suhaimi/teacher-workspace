@@ -20,8 +20,8 @@ Revision: `main` @ `5ff58a7`. Ordered by engineering impact. Each item says how 
 | Q6 | How does `/api/` pick a remote backend (path prefix per remote?), what claims does the signed JWT carry, and which algorithm (HMAC given the 32-byte signing keys)? | `handler/proxy.go`, `proxy_test.go`, `config.go` |
 | ~~Q7~~ | **Resolved:** sign-in decodes only the `email` claim and stores `User{Email}`; Edupass `groups`, `sub` and `name` are ignored and no user is rejected for role (`auth.go:235-249`). Follow-up in Q26 |  |
 | Q8 | **Resolved (server side):** tokens are minted into the page (`index.go:44`) but `VerifyCSRFToken` has no non-test caller; only `SameSite=Lax` protects unsafe requests. Open: is enforcement planned, and which header will the host use? | maintainers; host fetch code |
-| Q9 | Is `/login` (frontend) and an unauthenticated redirect enforced server-side, or only in the SPA? | `handler/index.go`, `containers/LoginView.tsx`, `RootLayout.tsx` |
-| Q10 | Route `/students/*` renders a local placeholder, while config defines a Student Insights (`si`) remote. Is wiring pending? | `App.tsx`, `index.go` remote list |
+| ~~Q9~~ | **Resolved:** no. The server renders the shell for anonymous sessions and `RootLayout` has no guard; the preloaded state has no user flag, so the SPA cannot know whether the user is signed in (`index.go:14-56`, `RootLayout.tsx`). Follow-up: Q30 |  |
+| ~~Q10~~ | **Resolved:** the `si` remote is registered when configured (`index.go:30-31`) but no route loads it; `/students/*` renders the local placeholder (`App.tsx:44`). Wiring is presumably pending |  |
 | Q11 | Health/readiness endpoint for the Go server: none in the route table. How does the deploy platform probe it? | `handler.go:93-105` (Verified none); ask platform team |
 | Q12 | Frontend is never typechecked or built in PR CI, and mock-edupass tests/typecheck are not run in CI (only Docker build compiles the host) | `ci.yml` (Verified); ask whether intentional |
 | Q13 | `Dockerfile` downloads `pnpm-linux-arm64` explicitly, consistent with arm64-only publishing; an amd64 build would fail at that step | `Dockerfile` L17-19 (Verified) |
@@ -39,3 +39,5 @@ Revision: `main` @ `5ff58a7`. Ordered by engineering impact. Each item says how 
 | Q26 | Any Edupass user with an email can sign in; mock fixtures (staff-4 role conflict, staff-7 non-TW role, staff-5 `TWSTG`) imply planned role parsing and rejection. What is the intended authorisation model and where should it live? | maintainers; `auth.go:243-249` |
 | Q27 | No refresh token use, no stored ID token, no logout (local or Edupass). Users re-authenticate after 30m idle. Intended? | `auth.go`, `workflows/edupass-sign-in.md` A4 |
 | Q28 | `email_verified` is not checked; does Edupass guarantee verified emails? | Edupass docs (external) |
+| Q29 | No CSP, `X-Frame-Options` / `frame-ancestors`, `Referrer-Policy` or HSTS on the page (`httputil.go:45-54`). Are these set by the load balancer or CDN? | platform team |
+| Q30 | How should the SPA learn the user is signed in (to show `/login` or user details)? Options: add a field to `PreloadedState`, or a "me" endpoint. Neither exists | `index.go:14-17`, `preloaded-state.ts` |
