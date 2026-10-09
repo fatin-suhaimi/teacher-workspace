@@ -1,13 +1,13 @@
 # 03 Coverage Ledger
 
-Revision: `main` @ `5ff58a7`. Statuses: `inspected`, `partially inspected`, `identified`, `excluded (reason)`, `inaccessible`. "Inspected" means read in full at this revision, not that every call has been traced.
+Revision: `main` @ `5ff58a7`. Last updated: Phase 1 batch 1 (2026-10-09). Statuses: `inspected`, `partially inspected`, `identified`, `excluded (reason)`, `inaccessible`. "Inspected" means read in full at this revision, not that every call has been traced.
 
 ## Summary
 
 | Area | Files | Inspected | Partially | Identified only | Excluded |
 | --- | --- | --- | --- | --- | --- |
-| Server Go source (non-test) | 21 | 2 | 0 | 19 | 0 |
-| Server Go tests | 18 | 0 | 0 | 18 | 0 |
+| Server Go source (non-test) | 21 | 6 | 0 | 15 | 0 |
+| Server Go tests | 18 | 1 | 3 | 14 | 0 |
 | Host app source + config (excl. assets, dist) | 33 | 9 | 0 | 24 | 0 |
 | mock-edupass source + tests + config | 10 | 4 | 0 | 6 | 0 |
 | Build, CI/CD, tooling, root config | 22 | 15 | 0 | 3 | 4 (lockfiles, `.env`) |
@@ -17,12 +17,12 @@ Revision: `main` @ `5ff58a7`. Statuses: `inspected`, `partially inspected`, `ide
 
 | Path | Subsystem | Status | Key symbols / notes | Docs |
 | --- | --- | --- | --- | --- |
-| `server/cmd/tw/main.go` | S1 | inspected | `main`, `shutdownTimeout`; store switch L56-89; server L104-116; shutdown L118-138 | 00, 01 |
-| `server/internal/config/config.go` | S2 | identified | ~22 KB; `Default`, `Validate`, `SessionStoreProvider*`, `Env*` referenced from main |  |
-| `server/internal/config/config_test.go` | S2 | identified | ~54 KB |  |
-| `server/pkg/dotenv/dotenv.go` | S2 | identified | `Load` |  |
-| `server/pkg/dotenv/parser.go` | S2 | identified |  |  |
-| `server/pkg/dotenv/dotenv_test.go`, `parser_test.go` | S2 | identified |  |  |
+| `server/cmd/tw/main.go` | S1 | inspected | `main`, `shutdownTimeout`; store switch L56-89; server L104-116; shutdown L118-138 | 00, 01, 02 |
+| `server/internal/config/config.go` | S2 | inspected | `Config`, `Default`, `Validate`, per-section `validate`, `EdupassClientCredentials`, `IsPostsRegistered`, `IsStudentInsightsRegistered` | 02 |
+| `server/internal/config/config_test.go` | S2 | partially inspected | Test/case names all listed; `TestDefault` bodies read; other bodies sampled | 02 |
+| `server/pkg/dotenv/dotenv.go` | S2 | inspected | `Load`, `decode`, `environToMap`, `stringToURLFunc`, `stringToLogLevelFunc` | 02 |
+| `server/pkg/dotenv/parser.go` | S2 | inspected | `parse`, `lineRE`; no-op replace at L16 (Q17) | 02 |
+| `server/pkg/dotenv/dotenv_test.go`, `parser_test.go` | S2 | partially inspected | `TestLoad` read; `TestDecode` URL and override cases read; `TestParse` not read | 02 |
 | `server/internal/handler/handler.go` | S3 | inspected | `Handler`, `New`, `Routes`, `newDevServerProxy` | 00, 01 |
 | `server/internal/handler/auth.go` | S3 | identified | `authEdupass`, `authEdupassCallback` |  |
 | `server/internal/handler/auth_test.go` | S3 | identified | ~57 KB |  |
@@ -31,11 +31,12 @@ Revision: `main` @ `5ff58a7`. Statuses: `inspected`, `partially inspected`, `ide
 | `server/internal/handler/proxy.go` | S3 | identified | `proxy` |  |
 | `server/internal/handler/proxy_test.go` | S3 | identified |  |  |
 | `server/internal/handler/handler_test.go` | S3 | identified | 16 bytes (package clause only, presumably) |  |
-| `server/internal/middleware/middleware.go` | S4 | identified | `Middleware`, `Chain` |  |
+| `server/internal/middleware/middleware.go` | S4 | inspected | `Middleware`, `Chain` (first = outermost) | 02 |
 | `server/internal/middleware/requestid.go` | S4 | identified | `RequestID` |  |
 | `server/internal/middleware/requestlog.go` | S4 | identified | `RequestLog`, `LoggerFromContext` (used in handler.go L119) |  |
 | `server/internal/middleware/session.go` | S4/S5 | identified | `Session`, `SessionOptions` |  |
-| `server/internal/middleware/*_test.go` (4 files) | S4 | identified | `session_test.go` ~48 KB |  |
+| `server/internal/middleware/middleware_test.go` | S4 | inspected | `TestChain` | 02 |
+| `server/internal/middleware/{requestid,requestlog,session}_test.go` | S4 | identified | `session_test.go` ~48 KB |  |
 | `server/internal/session/session.go` | S5 | identified | `Store` interface |  |
 | `server/internal/session/csrf.go` | S5 | identified |  |  |
 | `server/internal/session/memstore/memstore.go` | S5 | identified | `New` |  |

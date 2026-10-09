@@ -3,7 +3,7 @@
 Evidence-backed onboarding docs for Teacher Workspace, built incrementally following `CODEBASE_MASTER_PROMPT.md` (in the claude.ai Project "Teacher Workspace 2.0").
 
 - **Revision analysed:** `main` @ `5ff58a78d09a37a6d662794297d7cdf70aeedb91` (read from `.git/refs/heads/main`; uncommitted local changes were not checked)
-- **Current phase:** Phase 0 complete (inventory and plan). Phases 1 to 6 not started.
+- **Current phase:** Phase 1 batch 1 complete (startup, configuration, middleware composition). Remaining Phase 1 items and Phases 2 to 6 not started.
 - **Last updated:** 2026-10-09
 
 ## Status labels used throughout
@@ -21,7 +21,7 @@ Evidence-backed onboarding docs for Teacher Workspace, built incrementally follo
 | --- | --- | --- |
 | [00-project-overview.md](00-project-overview.md) | What the system is, tech stack, provisional system map | Phase 0 (provisional) |
 | [01-repository-map.md](01-repository-map.md) | Directory layout, subsystems, entry points, dependencies | Phase 0 |
-| 02-architecture.md | C4 diagrams, startup, layering | Not started (Phase 1) |
+| [02-architecture.md](02-architecture.md) | Layering, containers, startup/shutdown, config loading and reference, middleware order | Phase 1 batch 1 |
 | [03-coverage-ledger.md](03-coverage-ledger.md) | Per-file review status | Phase 0 |
 | 04-api-catalog.md | Every route/interface | Not started (Phase 3) |
 | 05-feature-to-code-map.md | Feature to code traceability | Not started |
@@ -38,5 +38,6 @@ Evidence-backed onboarding docs for Teacher Workspace, built incrementally follo
 
 1. `00-project-overview.md`
 2. `01-repository-map.md`
-3. Repo's own docs: `CONTRIBUTING.md`, `docs/adr/0001-*`, `docs/adr/0002-*`
-4. `13-session-handoff.md` for what to look at next
+3. `02-architecture.md`
+4. Repo's own docs: `CONTRIBUTING.md`, `docs/adr/0001-*`, `docs/adr/0002-*`
+5. `13-session-handoff.md` for what to look at next

@@ -58,7 +58,7 @@ Revision: `main` @ `5ff58a7`. Module path `github.com/String-sg/teacher-workspac
 | ID | Subsystem | Paths | Role (status) |
 | --- | --- | --- | --- |
 | S1 | Server bootstrap | `server/cmd/tw` | Logger, config load+validate, store selection, middleware chain, `http.Server` timeouts, SIGINT/SIGTERM shutdown with 30s timeout (Verified, `main.go:28-139`) |
-| S2 | Configuration | `server/internal/config`, `server/pkg/dotenv` | Defaults, env/.env loading, validation (Inferred, not read) |
+| S2 | Configuration | `server/internal/config`, `server/pkg/dotenv` | Defaults, env/.env loading, validation, Edupass credential loading (Verified, see `02-architecture.md`) |
 | S3 | HTTP handlers | `server/internal/handler` | Route table Verified (`handler.go:93-105`); auth/index/proxy bodies not read |
 | S4 | Middleware | `server/internal/middleware` | RequestID, RequestLog, Session, `Chain` (not read) |
 | S5 | Sessions and CSRF | `server/internal/session/**` | Store interface, memstore, valkeystore, CSRF token (not read) |
@@ -96,7 +96,7 @@ flowchart LR
 
 | Edge | Status | Evidence |
 | --- | --- | --- |
-| RequestID and RequestLog wrap all routes | Verified wiring; **order of execution Inferred** (depends on `Chain` semantics in `middleware.go`, not read) | `main.go:107-111` |
+| RequestID and RequestLog wrap all routes; RequestID is outermost | Verified (`Chain` makes the first middleware outermost) | `main.go:107-111`, `middleware.go:10-18`, `middleware_test.go:11-45` |
 | `/static/` bypasses session | Verified | `handler.go:100-102` |
 | Session wraps auth, api, index | Verified | `handler.go:94-102` |
 
