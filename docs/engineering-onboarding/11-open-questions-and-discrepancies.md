@@ -41,6 +41,8 @@ Revision: `main` @ `5ff58a7`. Ordered by engineering impact. Each item says how 
 | Q28 | `email_verified` is not checked; does Edupass guarantee verified emails? | Edupass docs (external) |
 | Q29 | No CSP, `X-Frame-Options` / `frame-ancestors`, `Referrer-Policy` or HSTS on the page (`httputil.go:45-54`). Are these set by the load balancer or CDN? | platform team |
 | Q30 | How should the SPA learn the user is signed in (to show `/login` or user details)? Options: add a field to `PreloadedState`, or a "me" endpoint. Neither exists | `index.go:14-17`, `preloaded-state.ts` |
-| Q31 | Proxy forwards no client IP (`X-Forwarded-*`) and no request ID to remote backends, so backends cannot correlate logs with TW. Intended? | `proxy.go:83-90`; batch 6 for RequestID |
+| Q31 | Proxy forwards no client IP (`X-Forwarded-*`) and not TW's request ID; worse, a client-supplied `X-Request-ID` is passed through unchanged, so a backend may log a spoofable value. TW also ignores inbound request IDs from the load balancer (`requestid.go:22`, `proxy.go:83-90`). Intended? | maintainers |
 | Q32 | No per-backend timeout: a slow backend is cut only by the server `WriteTimeout` (30s), and uploads are bound by `ReadTimeout` (15s). Are these right for partner APIs (e.g. file uploads)? | `proxy.go:82`, `config.go:52-54` |
 | Q33 | Three identifiers per app (`/api/posts`, `aud=pg`, remote `pg`; `/api/student-insights`, `aud=si`, remote `si`). Should the API prefix match the remote name? Worth documenting for partner teams | `proxy.go:28-41`, `index.go:27-31` |
+| Q34 | No panic-recovery middleware and no `http.Server.ErrorLog`: a handler panic is logged by `net/http` as plain text on stderr (not JSON) with no access-log line or request ID. Acceptable for log ingestion? | `main.go:105-116`; `subsystems/observability.md` |
+| Q35 | No metrics or tracing. Is platform-level monitoring (load balancer metrics, log-based alerts) the intended approach? | platform team |

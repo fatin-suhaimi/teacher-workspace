@@ -240,7 +240,7 @@ flowchart LR
     AM --> A4["/ index"]
 ```
 
-RequestID runs before RequestLog, so the request log line can include the ID (Inferred; confirm in batch 6 when `requestid.go` / `requestlog.go` are read). Session runs inside both, and never for `/static/` (`handler.go:100-102`).
+RequestID runs before RequestLog, so the access-log line carries the request ID (Verified in batch 6: `requestlog.go:39-43, 53`, `requestid_test.go:82`; see `subsystems/observability.md`). Session runs inside both, and never for `/static/` (`handler.go:100-102`).
 
 ## 8. Where to make common changes
 
