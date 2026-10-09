@@ -3,7 +3,7 @@
 Evidence-backed onboarding docs for Teacher Workspace, built incrementally following `CODEBASE_MASTER_PROMPT.md` (in the claude.ai Project "Teacher Workspace 2.0").
 
 - **Revision analysed:** `main` @ `5ff58a78d09a37a6d662794297d7cdf70aeedb91` (read from `.git/refs/heads/main`; uncommitted local changes were not checked)
-- **Current phase:** Phase 1 batch 1 complete (startup, configuration, middleware composition). Remaining Phase 1 items and Phases 2 to 6 not started.
+- **Current phase:** Phase 2 in progress. Done: Phase 0, Phase 1 batch 1 (startup/config), Phase 2 batch 2 (sessions and CSRF).
 - **Last updated:** 2026-10-09
 
 ## Status labels used throughout
@@ -30,6 +30,7 @@ Evidence-backed onboarding docs for Teacher Workspace, built incrementally follo
 | 08-infrastructure-and-operations.md | Docker, ECR, release, runtime config | Not started |
 | 09-local-development-and-testing.md | Running and testing locally | Not started |
 | 10-business-glossary.md | Domain terms | Not started |
+| [subsystems/sessions.md](subsystems/sessions.md) | Session model, middleware lifecycle, TTLs, cookie, CSRF, stores, risks | Phase 2 batch 2 |
 | [11-open-questions-and-discrepancies.md](11-open-questions-and-discrepancies.md) | Unknowns and doc/code conflicts | Phase 0 |
 | 12-change-impact-guide.md | Where changes ripple | Not started |
 | [13-session-handoff.md](13-session-handoff.md) | Resume checkpoint for the next session | Current |

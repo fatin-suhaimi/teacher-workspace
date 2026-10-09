@@ -1,13 +1,13 @@
 # 03 Coverage Ledger
 
-Revision: `main` @ `5ff58a7`. Last updated: Phase 1 batch 1 (2026-10-09). Statuses: `inspected`, `partially inspected`, `identified`, `excluded (reason)`, `inaccessible`. "Inspected" means read in full at this revision, not that every call has been traced.
+Revision: `main` @ `5ff58a7`. Last updated: Phase 2 batch 2 (2026-10-09). Statuses: `inspected`, `partially inspected`, `identified`, `excluded (reason)`, `inaccessible`. "Inspected" means read in full at this revision, not that every call has been traced.
 
 ## Summary
 
 | Area | Files | Inspected | Partially | Identified only | Excluded |
 | --- | --- | --- | --- | --- | --- |
-| Server Go source (non-test) | 21 | 6 | 0 | 15 | 0 |
-| Server Go tests | 18 | 1 | 3 | 14 | 0 |
+| Server Go source (non-test) | 21 | 12 | 1 | 8 | 0 |
+| Server Go tests | 18 | 1 | 9 | 8 | 0 |
 | Host app source + config (excl. assets, dist) | 33 | 9 | 0 | 24 | 0 |
 | mock-edupass source + tests + config | 10 | 4 | 0 | 6 | 0 |
 | Build, CI/CD, tooling, root config | 22 | 15 | 0 | 3 | 4 (lockfiles, `.env`) |
@@ -24,29 +24,31 @@ Revision: `main` @ `5ff58a7`. Last updated: Phase 1 batch 1 (2026-10-09). Status
 | `server/pkg/dotenv/parser.go` | S2 | inspected | `parse`, `lineRE`; no-op replace at L16 (Q17) | 02 |
 | `server/pkg/dotenv/dotenv_test.go`, `parser_test.go` | S2 | partially inspected | `TestLoad` read; `TestDecode` URL and override cases read; `TestParse` not read | 02 |
 | `server/internal/handler/handler.go` | S3 | inspected | `Handler`, `New`, `Routes`, `newDevServerProxy` | 00, 01 |
-| `server/internal/handler/auth.go` | S3 | identified | `authEdupass`, `authEdupassCallback` |  |
+| `server/internal/handler/auth.go` | S3 | identified | `authEdupass`, `authEdupassCallback`; session call sites located (L41-55, L93-107, L249) |  |
 | `server/internal/handler/auth_test.go` | S3 | identified | ~57 KB |  |
-| `server/internal/handler/index.go` | S3 | identified | `index`, likely `static` |  |
+| `server/internal/handler/index.go` | S3 | identified | `index`, likely `static`; issues `CSRFToken()` into preloaded state (L36-44) |  |
 | `server/internal/handler/index_test.go` | S3 | identified |  |  |
-| `server/internal/handler/proxy.go` | S3 | identified | `proxy` |  |
+| `server/internal/handler/proxy.go` | S3 | partially inspected | `proxy()` L25-78 read (routing by first path segment, HS256 JWT claims, no session check); `newRemoteBackendProxy` L81+ not read | sessions |
 | `server/internal/handler/proxy_test.go` | S3 | identified |  |  |
 | `server/internal/handler/handler_test.go` | S3 | identified | 16 bytes (package clause only, presumably) |  |
 | `server/internal/middleware/middleware.go` | S4 | inspected | `Middleware`, `Chain` (first = outermost) | 02 |
 | `server/internal/middleware/requestid.go` | S4 | identified | `RequestID` |  |
 | `server/internal/middleware/requestlog.go` | S4 | identified | `RequestLog`, `LoggerFromContext` (used in handler.go L119) |  |
-| `server/internal/middleware/session.go` | S4/S5 | identified | `Session`, `SessionOptions` |  |
+| `server/internal/middleware/session.go` | S4/S5 | inspected | `Session`, `SessionOptions`, `SessionFromContext`, `WithSession`, `sessionResponseWriter` | sessions |
 | `server/internal/middleware/middleware_test.go` | S4 | inspected | `TestChain` | 02 |
-| `server/internal/middleware/{requestid,requestlog,session}_test.go` | S4 | identified | `session_test.go` ~48 KB |  |
-| `server/internal/session/session.go` | S5 | identified | `Store` interface |  |
-| `server/internal/session/csrf.go` | S5 | identified |  |  |
-| `server/internal/session/memstore/memstore.go` | S5 | identified | `New` |  |
-| `server/internal/session/valkeystore/valkeystore.go` | S5 | identified | `New`, `WithPrefix` |  |
-| `server/internal/session/**/_test.go` (4 files) | S5 | identified | valkeystore tests use testcontainers |  |
+| `server/internal/middleware/session_test.go` | S4/S5 | partially inspected | 40 subtest names reviewed | sessions |
+| `server/internal/middleware/{requestid,requestlog}_test.go` | S4 | identified |  |  |
+| `server/internal/session/session.go` | S5 | inspected | `Store`, `Session`, `snapshot`, `User`, `New`, `Load`, `Save`, `SetUser`, CSRF accessors, data accessors | sessions |
+| `server/internal/session/csrf.go` | S5 | inspected | `mask`, `unmask`, `maskToken`, `verifyToken` | sessions |
+| `server/internal/session/memstore/memstore.go` | S5 | inspected | `Store`, `New`, `WithClock`, `Prepare`/`Commit`/`Drop` | sessions |
+| `server/internal/session/valkeystore/valkeystore.go` | S5 | inspected | `Store`, `New`, `WithPrefix`, GET / SET EX / DEL | sessions |
+| `server/internal/session/**/_test.go` (4 files) | S5 | partially inspected | all subtest names reviewed; valkeystore tests use testcontainers | sessions |
 | `server/internal/htmlutil/template.go` | S6 | identified | `Template`, `NewURLTemplate`, `NewFileTemplate` |  |
 | `server/internal/htmlutil/template_test.go` | S6 | identified |  |  |
 | `server/internal/httputil/httputil.go`, `error.go` | S6 | identified | `RenderPlain` |  |
 | `server/internal/httputil/httputil_test.go` | S6 | identified |  |  |
-| `server/pkg/random/random.go` (+ test) | S6 | identified |  |  |
+| `server/pkg/random/random.go` | S6 | inspected | `Alphanumeric` (crypto/rand, rejection sampling), `Base62`, `Base58` | sessions |
+| `server/pkg/random/random_test.go` | S6 | partially inspected | subtest names reviewed | sessions |
 | `server/pkg/require/require.go` | S6 | identified | no test file |  |
 
 ## Host frontend (`apps/host`)
