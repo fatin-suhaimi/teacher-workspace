@@ -1,6 +1,19 @@
 # 11 Open Questions and Discrepancies
 
-Revision: `main` @ `5ff58a7`. Ordered by engineering impact. Each item says how to resolve it.
+Revision: `main` @ `5ff58a7`. Ordered by engineering impact. Each item says how to resolve it. Audited in batch 12 (2026-10-09).
+
+## Shortlist for maintainers
+
+The questions most worth asking, in priority order. Answers would resolve the largest documented gaps.
+
+1. **Q21 / Q8 / Q38:** Is requiring sign-in on `/api/`, adding a user claim to the backend JWT, and enforcing CSRF planned before partner backends hold real data? How should remotes obtain the CSRF token?
+2. **Q26:** What is the intended authorisation model from Edupass `groups` (roles, attributes, locations, `TW` vs `TWSTG`)?
+3. **Q22 / Q27:** Is "no logout, 30m idle timeout, no absolute lifetime" the agreed session policy (shared school devices)?
+4. **Q29 / Q11 / Q35:** Does the load balancer or CDN add security headers, health probes and monitoring, given the app has none?
+5. **Q1:** Is the ADR-0001 developer image (host, backend, datastores, local IdP) still planned, or built elsewhere?
+6. **Q40 / Q12:** Does the CI Format job actually fail on unformatted code? Is skipping host typecheck and mock tests in CI intentional?
+7. **Q41 / Q42 / Q3:** Happy to receive small docs PRs for `CONTRIBUTING.md` (third process, full remote env vars) and the mock-edupass README variable names?
+8. **Q4:** Which GitHub org is canonical, `String-sg` or `transformteamsg`?
 
 ## Conflicts with documentation
 
@@ -14,21 +27,23 @@ Revision: `main` @ `5ff58a7`. Ordered by engineering impact. Each item says how 
 | Q41 | Running locally | `README.md` and `CONTRIBUTING.md` "Running locally" list two processes (host dev server, Go server) | Signing in needs mock-edupass on `:9000` as well (`.env.example` Edupass URLs); it is documented only in `apps/mock-edupass/README.md` | Docs fix: add the third terminal |
 | Q4 | Repo identity | Module path `github.com/String-sg/teacher-workspace` (`go.mod`) | CHANGELOG links point to `github.com/transformteamsg/teacher-workspace` | Ask which org is canonical (possibly a transfer or mirror) |
 
-## Unknowns to resolve in upcoming batches
+## Open questions
+
+Struck-through items are resolved; the resolution stays for traceability.
 
 | # | Question | Where to look |
 | --- | --- | --- |
 | ~~Q5~~ | **Resolved:** `Chain` makes the first middleware outermost, so RequestID wraps RequestLog wraps routes (`middleware.go:10-18`, `middleware_test.go:11-45`) |  |
-| Q6 | How does `/api/` pick a remote backend (path prefix per remote?), what claims does the signed JWT carry, and which algorithm (HMAC given the 32-byte signing keys)? | `handler/proxy.go`, `proxy_test.go`, `config.go` |
+| ~~Q6~~ | **Resolved (batch 5):** `/api/<app>/` picks the backend by the first path segment (`posts`, `student-insights`); the JWT is HS256 with exactly `iss`, `aud`, `iat`, `exp` (`proxy.go:51-67`; `workflows/api-proxy.md`) |  |
 | ~~Q7~~ | **Resolved:** sign-in decodes only the `email` claim and stores `User{Email}`; Edupass `groups`, `sub` and `name` are ignored and no user is rejected for role (`auth.go:235-249`). Follow-up in Q26 |  |
 | Q8 | **Resolved (server side):** tokens are minted into the page (`index.go:44`) but `VerifyCSRFToken` has no non-test caller; only `SameSite=Lax` protects unsafe requests. Open: is enforcement planned, and which header will the host use? | maintainers; host fetch code |
 | ~~Q9~~ | **Resolved:** no. The server renders the shell for anonymous sessions and `RootLayout` has no guard; the preloaded state has no user flag, so the SPA cannot know whether the user is signed in (`index.go:14-56`, `RootLayout.tsx`). Follow-up: Q30 |  |
 | ~~Q10~~ | **Resolved:** the `si` remote is registered when configured (`index.go:30-31`) but no route loads it; `/students/*` renders the local placeholder (`App.tsx:44`). Wiring is presumably pending |  |
 | Q11 | Health/readiness endpoint for the Go server: none in the route table. How does the deploy platform probe it? | `handler.go:93-105` (Verified none); ask platform team |
-| Q12 | Frontend is never typechecked or built in PR CI, and mock-edupass tests/typecheck are not run in CI (only Docker build compiles the host) | `ci.yml` (Verified); ask whether intentional |
+| Q12 | PR CI has no host typecheck or standalone host build (the host is compiled only inside the image job, skipped for forks), and mock-edupass tests and typecheck never run in CI. Intentional? | `ci.yml` (Verified); maintainers |
 | Q13 | `Dockerfile` downloads `pnpm-linux-arm64` explicitly, consistent with arm64-only publishing; an amd64 build would fail at that step | `Dockerfile` L17-19 (Verified) |
 | Q14 | Deployment pipeline (GitLab), environments, and runtime infra (load balancer, Valkey hosting, TLS) live outside this repo | Evidence gap: request access or docs |
-| Q15 | Uncommitted local changes in the working copy were not checked (git status not run) | User can run `git status` and share output |
+| Q15 | Uncommitted local changes in the working copy were not checked (git status not run). Source file timestamps were unchanged across all batches | user can run `git status` |
 | Q16 | **Partly resolved:** both TTLs are sliding idle timeouts, re-applied on every request (`middleware/session.go:25-31, 88-111`). Open: rationale for 3h anonymous vs 30m signed-in | maintainers |
 | Q17 | `parser.go:16` `strings.ReplaceAll(s, "\n", "\n")` is a no-op; probably meant to normalise lone `\r`. Low impact | Code owner; `parser_test.go` |
 | Q18 | Set-but-empty env vars override defaults (e.g. `TW_REMOTE_POSTS_MANIFEST_URL=` counts as partially registering Posts and fails startup). Intended? | `dotenv.go:44-52`, `dotenv_test.go:162`, `config.go:450` |

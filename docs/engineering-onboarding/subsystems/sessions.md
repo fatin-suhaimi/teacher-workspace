@@ -95,7 +95,7 @@ sequenceDiagram
 Walkthrough:
 
 - **Every request through the session layer writes the store and sets the cookie**, even if nothing changed (`middleware/session.go:88-111, 128-129`). That includes `/` page loads, `/auth/*` and every `/api/` call; only `/static/` is exempt (`handler.go:100-102`).
-- **Changes after the first write are lost.** Handlers must mutate the session before writing any bytes or headers (doc comment `middleware/session.go:44-46`; test "does not save changes made after the handler's first write", `session_test.go:531`).
+- **Changes after the first write are lost.** Handlers must mutate the session before writing any bytes or headers (doc comment `middleware/session.go:44-46`; test "does not save changes made after the handler's first write", `middleware/session_test.go:531`).
 - **Saving ignores client disconnects** (`context.WithoutCancel`, `middleware/session.go:94-96`), so a completed sign-in is persisted even if the browser goes away.
 - **Save failure replaces the response with a 500** and discards headers the handler added (e.g. `Content-Length`) (`middleware/session.go:167-188`).
 
@@ -119,7 +119,7 @@ stateDiagram-v2
     [*] --> Anonymous: first request without a valid cookie (New)
     Anonymous --> Anonymous: any request (re-saved, idle TTL = DefaultTTL, 3h)
     Anonymous --> SigningIn: GET /auth/edupass sets state, nonce, verifier, return_to
-    SigningIn --> Anonymous: callback reads and deletes the sign-in keys (failure path, Inferred)
+    SigningIn --> Anonymous: callback fails after reading and deleting the sign-in keys
     SigningIn --> Authenticated: callback succeeds, SetUser(email) rotates ID and CSRF secret, clears data, drops old entry
     Authenticated --> Authenticated: any request (re-saved, idle TTL = AuthenticatedTTL, 30m)
     Anonymous --> [*]: idle longer than DefaultTTL (store expiry)
@@ -129,12 +129,12 @@ stateDiagram-v2
 
 | Rule | Status | Evidence |
 | --- | --- | --- |
-| Both TTLs are **idle (sliding) timeouts**: every request re-commits with a fresh TTL and re-sends `Max-Age` | Verified | `middleware/session.go:25-31, 88-111`; tests at `session_test.go:348, 383, 435, 1002` |
-| TTL choice depends on `IsAuthenticated()` at commit time, so the response that signs in already uses `AuthenticatedTTL` | Verified | `middleware/session.go:89-92`; test `session_test.go:435` |
+| Both TTLs are **idle (sliding) timeouts**: every request re-commits with a fresh TTL and re-sends `Max-Age` | Verified | `middleware/session.go:25-31, 88-111`; tests at `middleware/session_test.go:348, 383, 435, 1002` |
+| TTL choice depends on `IsAuthenticated()` at commit time, so the response that signs in already uses `AuthenticatedTTL` | Verified | `middleware/session.go:89-92`; test `middleware/session_test.go:435` |
 | **No absolute lifetime**: an active signed-in session never expires on its own | Verified (no such logic exists) | `middleware/session.go`, `session.go` |
 | **No logout**: nothing calls `Store.Drop` except ID rotation, and no logout route is registered | Verified | `middleware/session.go:115-119`; route table `handler.go:93-105` |
 | Why DefaultTTL (3h) is longer than AuthenticatedTTL (30m) | Unknown (likely a short idle limit for signed-in staff; rationale not in repo) | ask maintainers |
-| Failure path of the callback returning the session to Anonymous | Inferred (keys are `GetAndDelete`d before validation) | `auth.go:100-107`; confirm in batch 3 |
+| Failure path of the callback returning the session to Anonymous | Verified (keys are `GetAndDelete`d before any validation, and every failure redirects without `SetUser`) | `auth.go:100-247`; `workflows/edupass-sign-in.md` section 5 |
 
 ## 6. CSRF tokens (resolves Q8, server side)
 

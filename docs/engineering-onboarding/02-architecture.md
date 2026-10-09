@@ -33,7 +33,7 @@ flowchart TB
 | --- | --- | --- |
 | `main` imports config, handler, middleware, session, memstore, valkeystore, dotenv | Verified | `main.go:15-21` |
 | `handler` imports config, htmlutil, httputil, middleware | Verified | `handler.go:15-18` |
-| `middleware` depends on `session` | Inferred (from `middleware.Session(store, ...)` taking a `session.Store`, `main.go:97`); imports not yet read |  |
+| `middleware` depends on `session` (and `httputil`) | Verified | `middleware/session.go:14-15` |
 | `dotenv` is generic (decodes into any struct via `dotenv` tags); `config` does not import it | Verified | `dotenv.go:16-29`, `config.go:3-17` |
 
 `main` is the only place that knows about concrete store implementations; handlers receive the session layer as an opaque `middleware.Middleware` (`handler.go:90-93`).
@@ -61,8 +61,8 @@ flowchart LR
     browser -->|redirect to authorize| edupass
     browser -->|loads remote entry| posts
     browser -->|loads remote entry| si
-    srv -->|"/api/ + HS256 JWT (Inferred)"| posts
-    srv -->|"/api/ + HS256 JWT (Inferred)"| si
+    srv -->|"/api/ + HS256 JWT"| posts
+    srv -->|"/api/ + HS256 JWT"| si
 ```
 
 | Edge | Status | Evidence |
@@ -70,9 +70,9 @@ flowchart LR
 | Dev proxy vs prod static, chosen by `TW_ENV` | Verified | `handler.go:66-85` |
 | Valkey only when provider is `valkey`; no fallback | Verified | `main.go:57-89`, `config.go:188-195` |
 | Exactly two remotes, Posts and Student Insights, each with manifest URL, backend base URL and signing key | Verified | `config.go:429-441` |
-| Signing keys are sized for HS256 (at least 32 bytes) | Verified (validation); use in proxy Inferred | `config.go:480-483, 517-520` |
-| Browser redirected to Edupass authorize endpoint | Inferred (standard OIDC; route exists at `handler.go:95`, body not read) |  |
-| Browser loads remote entries directly from manifest URLs | Inferred | `bootstrap.tsx:11` registers whatever the server embeds; `index.go` not read |
+| Signing keys are sized for HS256 (at least 32 bytes) and used to sign per-request JWTs | Verified | `config.go:480-483, 517-520`, `proxy.go:60-67` |
+| Browser redirected to Edupass authorize endpoint | Verified | `auth.go:57-63` |
+| Browser loads remote entries directly from manifest URLs | Verified (TW side); the fetch itself is MF runtime behaviour | `index.go:25-32`, `bootstrap.tsx:11` |
 
 ## 3. Startup sequence
 
@@ -223,7 +223,7 @@ All variables are read by `config.Config` (`config.go:27-441`). "Required" means
 | `TW_REMOTE_POSTS_MANIFEST_URL`, `_BACKEND_BASE_URL`, `_BACKEND_SIGNING_KEY` | unset (remote not registered) | all three or none; URLs http/https with host; base URL may have a path but no query or fragment; key >= 32 bytes |
 | `TW_REMOTE_STUDENT_INSIGHTS_MANIFEST_URL`, `_BACKEND_BASE_URL`, `_BACKEND_SIGNING_KEY` | unset | same rules |
 
-`IsPostsRegistered()` / `IsStudentInsightsRegistered()` report whether all three are set (`config.go:527-536`); their callers are not yet traced.
+`IsPostsRegistered()` / `IsStudentInsightsRegistered()` report whether all three are set (`config.go:527-536`); their callers are `index.go:27-31` (remote list) and `proxy.go:28-41` (backend table).
 
 ## 7. Request pipeline (middleware order now Verified)
 

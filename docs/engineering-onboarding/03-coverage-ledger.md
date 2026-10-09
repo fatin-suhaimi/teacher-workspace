@@ -1,15 +1,15 @@
 # 03 Coverage Ledger
 
-Revision: `main` @ `5ff58a7`. Last updated: batch 11, feature map and change-impact guide (2026-10-09; no new files read). All server source files and all hand-written host source files are now inspected; only shadcn-generated `components/ui/*` remain. Statuses: `inspected`, `partially inspected`, `identified`, `excluded (reason)`, `inaccessible`. "Inspected" means read in full at this revision, not that every call has been traced.
+Revision: `main` @ `5ff58a7`. Last updated: batch 12, AUDIT (2026-10-09). Every in-scope first-party source and config file is inspected; generated, vendored, binary, lockfile and secret files are excluded with reasons; test files are reviewed by case name with selected bodies read. Statuses: `inspected`, `partially inspected`, `identified`, `excluded (reason)`, `inaccessible`. "Inspected" means read in full at this revision, not that every call has been traced.
 
 ## Summary
 
 | Area | Files | Inspected | Partially | Identified only | Excluded |
 | --- | --- | --- | --- | --- | --- |
 | Server Go source (non-test) | 21 | 21 | 0 | 0 | 0 |
-| Server Go tests | 18 | 1 | 16 | 1 | 0 |
-| Host app source + config (excl. assets, dist) | 33 | 24 | 0 | 9 | 0 |
-| mock-edupass source + tests + config | 10 | 7 | 2 | 1 | 0 |
+| Server Go tests | 18 | 2 | 16 | 0 | 0 |
+| Host app source + config (excl. assets, dist) | 33 | 24 | 0 | 0 | 9 (shadcn-generated `components/ui/*`) |
+| mock-edupass source + tests + config | 10 | 8 | 2 | 0 | 0 |
 | Build, CI/CD, tooling, root config | 22 | 18 | 0 | 0 | 4 (lockfiles, `.env`) |
 | Repo docs | 7 | 7 | 0 | 0 | 0 |
 
@@ -30,7 +30,7 @@ Revision: `main` @ `5ff58a7`. Last updated: batch 11, feature map and change-imp
 | `server/internal/handler/index_test.go` | S3 | partially inspected | case names reviewed; CSRF embedding case read | subsystems/page-render |
 | `server/internal/handler/proxy.go` | S3 | inspected | `proxy()`, `remoteBackend`, `newRemoteBackendProxy` (Rewrite, ModifyResponse, ErrorHandler) | workflows/api-proxy |
 | `server/internal/handler/proxy_test.go` | S3 | partially inspected | case names reviewed; JWT claims test read | workflows/api-proxy |
-| `server/internal/handler/handler_test.go` | S3 | identified | 16 bytes (package clause only, presumably) |  |
+| `server/internal/handler/handler_test.go` | S3 | inspected | package clause only (`package handler`) |  |
 | `server/internal/middleware/middleware.go` | S4 | inspected | `Middleware`, `Chain` (first = outermost) | 02 |
 | `server/internal/middleware/requestid.go` | S4 | inspected | `RequestID`, `RequestIDFromContext`, `LoggerFromContext`, `WithLogger`, `X-Request-ID` | subsystems/observability |
 | `server/internal/middleware/requestlog.go` | S4 | inspected | `RequestLog`, `requestLogResponseWriter` | subsystems/observability |
@@ -63,7 +63,7 @@ Revision: `main` @ `5ff58a7`. Last updated: batch 11, feature map and change-imp
 | `src/containers/RootLayout.tsx`, `RemoteLoadFallbackView.tsx` | inspected | layout (sidebar, welcome modal, no auth guard); remote error fallback | subsystems/page-render |
 | `src/containers/HomeView.tsx`, `NotFoundView.tsx` | inspected | `APP_SECTIONS` catalogue (8 sections, 18 cards), greeting; 404 view | subsystems/host-shell |
 | `src/components/{AppCard,AppSection,ErrorBoundary,Sidebar,WelcomeModal}.tsx` | inspected | card (internal vs external link), section grid, boundary (no reporting), nav items, first-visit modal (`localStorage`) | subsystems/host-shell |
-| `src/components/ui/*.tsx` (9) | identified | shadcn-generated (CONTRIBUTING: regenerate, do not hand-edit); low review priority |
+| `src/components/ui/*.tsx` (9) | excluded (shadcn-generated; CONTRIBUTING: regenerate, do not hand-edit). Listed and searched for API calls only |
 | `src/hooks/use-mobile.ts`, `src/helpers/cn.ts`, `src/env.d.ts`, `src/App.css` | inspected | 768px breakpoint hook; `cn`; Rsbuild types; Tailwind `tw` prefix and design tokens | subsystems/host-shell |
 | `components.json` | inspected | shadcn `base-nova`, prefix `tw`, aliases | subsystems/host-shell |
 | `src/assets/**` | excluded (binary assets: SVG logos, PNG, MP4) |  |
@@ -78,7 +78,7 @@ Revision: `main` @ `5ff58a7`. Last updated: batch 11, feature map and change-imp
 | `src/config.ts`, `src/provider.ts` | inspected | `loadConfig`; `createProvider`, `accounts` (8 fixtures), PS256 + `x5t#S256` check, PKCE required, `account` extra param |
 | `test/api.test.ts` (~57 KB) | partially inspected | case names reviewed |
 | `test/config.test.ts` | partially inspected | case names reviewed | 09 |
-| `test/helpers.ts` | identified |  |
+| `test/helpers.ts` | inspected | PKCE helpers, cookie-aware `OidcClient` for the API tests |
 | `tsconfig.json` | inspected | NodeNext, strict, includes `src` and `test` | 09 |
 
 ## Build, CI/CD, tooling, root
@@ -116,3 +116,16 @@ Tracked from Phase 3 onward. Discovered so far (no flows traced yet):
 | `/` (catch-all) | `Handler.index()` | yes | yes | yes |
 | `/static/` | `Handler.static` | yes | no (flowchart only) | yes |
 | mock-edupass `GET /health`, `GET /interaction/:uid`, OIDC endpoints | `createApp`, `oidc-provider` | partial | no | no |
+
+## Audit summary (batch 12, 2026-10-09)
+
+| Check | Result |
+| --- | --- |
+| Citation ranges | 584 `file:line` citations across all docs resolved to a real file and an in-range line; 1 wrong file fixed (`subsystems/sessions.md` cited `session_test.go` for three middleware tests) |
+| Citation content | 34 load-bearing citations sampled against source (routes, middleware order, config defaults and validation, session invariants, CSRF, sign-in checks, proxy routing and claims, request ID, host boot, mock groups, key tests): all matched |
+| Stale labels | about 20 statements still marked Inferred, provisional or "not read" after later batches verified them, now updated (`00`, `01` subsystem table, `02` sections 1-2 and 6, `04` header, `subsystems/sessions.md`, `workflows/api-proxy.md`) |
+| Remaining Inferred items | library or platform behaviour only (go-oidc verification and key refetch, `net/http` timeouts and panic logging, `httputil.ReverseProxy` header handling, `html/template` escaping, browser `SameSite` semantics, oxfmt exit code, MF runtime fetching) plus rationale and outside-repo deployment facts. Each is labelled where it appears |
+| Contradictions between docs | none found after the fixes above |
+| Interfaces | 5 of 5 TW server routes traced with diagrams and error paths (`04-api-catalog.md`) |
+| Diagrams | all Mermaid blocks parse with mermaid 11.4.1; visual layout not reviewed |
+| Known limits | test bodies mostly not read (case names reviewed); deployment, GitLab, load balancer and Valkey hosting are outside the repo (Q14); working-copy changes not checked (Q15) |

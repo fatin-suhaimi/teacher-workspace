@@ -19,8 +19,8 @@ Revision: `main` @ `5ff58a7`. Module path `github.com/String-sg/teacher-workspac
 │   │   └── httputil/            Response/error rendering helpers
 │   └── pkg/                     Reusable packages
 │       ├── dotenv/              .env + environment loading into config
-│       ├── random/              Random string generation (base58/base62 per commit history)
-│       └── require/             (purpose not yet read; no tests)
+│       ├── random/              crypto/rand base58/base62 strings (session IDs, CSRF secrets, request IDs, state, nonce)
+│       └── require/             Test-only assertion helpers (Equal, NoError, ...); not used by the binary
 ├── apps/
 │   ├── host/                    React host shell (Module Federation host "teacher_workspace")
 │   │   ├── index.html           Template with Go `{{.}}` preloaded-state slot
@@ -59,13 +59,13 @@ Revision: `main` @ `5ff58a7`. Module path `github.com/String-sg/teacher-workspac
 | --- | --- | --- | --- |
 | S1 | Server bootstrap | `server/cmd/tw` | Logger, config load+validate, store selection, middleware chain, `http.Server` timeouts, SIGINT/SIGTERM shutdown with 30s timeout (Verified, `main.go:28-139`) |
 | S2 | Configuration | `server/internal/config`, `server/pkg/dotenv` | Defaults, env/.env loading, validation, Edupass credential loading (Verified, see `02-architecture.md`) |
-| S3 | HTTP handlers | `server/internal/handler` | Route table Verified (`handler.go:93-105`); auth/index/proxy bodies not read |
-| S4 | Middleware | `server/internal/middleware` | RequestID, RequestLog, Session, `Chain` (not read) |
-| S5 | Sessions and CSRF | `server/internal/session/**` | Store interface, memstore, valkeystore, CSRF token (not read) |
-| S6 | Server utilities | `server/internal/htmlutil`, `server/internal/httputil`, `server/pkg/random`, `server/pkg/require` | Not read |
-| S7 | Host frontend | `apps/host` | Bootstrap and routes Verified; components not read |
-| S8 | mock-edupass | `apps/mock-edupass` | Entry and interaction router Verified; provider/config not read |
-| S9 | Build, CI/CD, tooling | root configs, `.github/`, `Dockerfile`, `compose.yml` | Verified (read in full except `.oxlintrc.json`, `.oxfmtrc.json`) |
+| S3 | HTTP handlers | `server/internal/handler` | Routes, Edupass sign-in, page render, static, API proxy (Verified; `workflows/edupass-sign-in.md`, `subsystems/page-render.md`, `workflows/api-proxy.md`) |
+| S4 | Middleware | `server/internal/middleware` | `Chain` (first = outermost), RequestID, RequestLog, Session (Verified; `subsystems/observability.md`, `subsystems/sessions.md`) |
+| S5 | Sessions and CSRF | `server/internal/session/**` | Store interface, snapshot model, masked CSRF tokens, memstore, valkeystore (Verified; `subsystems/sessions.md`) |
+| S6 | Server utilities | `server/internal/htmlutil`, `server/internal/httputil`, `server/pkg/random`, `server/pkg/require` | Templates, response helpers, random strings, test helpers (Verified; `subsystems/page-render.md`, `subsystems/sessions.md`, `workflows/api-proxy.md` section 7) |
+| S7 | Host frontend | `apps/host` | Boot, routes, layout, catalogue, remotes, styling (Verified except shadcn-generated `components/ui/*`; `subsystems/host-shell.md`) |
+| S8 | mock-edupass | `apps/mock-edupass` | Local OIDC provider, 8 fixtures, PKCE, both client auth methods (Verified; `workflows/edupass-sign-in.md` section 8) |
+| S9 | Build, CI/CD, tooling | root configs, `.github/`, `Dockerfile`, `compose.yml` | Verified (`08-infrastructure-and-operations.md`, `09-local-development-and-testing.md`) |
 
 ## Entry points
 

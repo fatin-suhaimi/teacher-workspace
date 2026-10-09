@@ -1,42 +1,39 @@
 # 13 Session Handoff
 
 - **Repo:** `teacher-workspace` (local clone at `~/teacher-workspace`), module `github.com/String-sg/teacher-workspace`
-- **Branch / revision:** analysed `main` @ `5ff58a78d09a37a6d662794297d7cdf70aeedb91` (unchanged as of 2026-10-09 23:29); docs live on branch `docs/engineering-onboarding` (user pushes to remote `fork`)
+- **Branch / revision:** analysed `main` @ `5ff58a78d09a37a6d662794297d7cdf70aeedb91` (unchanged as of 2026-10-09 23:45); docs live on branch `docs/engineering-onboarding` (user pushes to remote `fork`)
 - **Objective:** evidence-backed onboarding knowledge base per `CODEBASE_MASTER_PROMPT.md`
-- **Completed (2026-10-09):** Phase 0; batches 1-11 (startup/config, sessions/CSRF, Edupass sign-in, page render, API proxy, observability, host shell, delivery/local dev, security, data model/glossary, feature map/change-impact)
-- **Working constraints:** read-only discovery of the user's folder; no git or shell commands run on the user's behalf. Docs written only to `docs/engineering-onboarding/`. After each batch that changes files, give the user copy-paste `git add` / `git commit -m '...'` (single quotes, conventional commit with backticked scope) / `git push -u fork docs/engineering-onboarding`.
+- **Status:** **Phases 0-6 complete** (2026-10-09): Phase 0 inventory; batches 1-11 analysis and docs; batch 12 AUDIT. Limits are recorded in `03-coverage-ledger.md` (audit summary).
+- **Working constraints:** read-only discovery of the user's folder; no git or shell commands run on the user's behalf. Docs written only to `docs/engineering-onboarding/`. After each change to files, give the user copy-paste `git add` / `git commit -m '...'` (single quotes, conventional commit with backticked scope) / `git push -u fork docs/engineering-onboarding`.
 
-## Coverage highlights
+## Coverage
 
-- Server source 21/21; host 24/33 (remaining 9 are shadcn `components/ui/*`); mock-edupass source all read; build, CI, tooling and repo docs all read. Tests reviewed mostly by case name.
-- All planned docs now exist: `00`-`13`, `subsystems/{sessions,page-render,observability,host-shell}`, `workflows/{edupass-sign-in,api-proxy}`.
-- See `03-coverage-ledger.md`.
+- Every in-scope first-party source and config file inspected (server 21/21, host 24/24 hand-written, mock-edupass 8/8 non-test-body, build and CI all).
+- Excluded with reasons: shadcn `components/ui/*`, assets, `dist`, `node_modules`, lockfiles, `.env`.
+- Tests: case names reviewed across all suites; selected bodies read.
+- Audit: 584 citations range-checked, 34 content-sampled; stale labels fixed; no contradictions remain.
 
-## Key discoveries (evidence-backed)
+## Key discoveries
 
-1. 15 features mapped end to end (`05-feature-to-code-map.md`); highest blast radius: `internal/config`, the Session middleware, the `PreloadedState` contract, remote identifiers in four places, the JWT claim set, and MF shared singletons.
-2. 14 change recipes with tests, docs, partner and release impact (`12-change-impact-guide.md`). C4 (auth on `/api/` plus user claims) and C5 (CSRF) are major-version changes under ADR-0002 and should ship together.
-3. Security: R1 unauthenticated `/api/`, R2 CSRF unenforced, R3 no authorisation (`07-security-and-auth.md`).
-4. Data: no database; the session snapshot is the only persisted state (`06-data-model.md`).
+1. Identity stops at the session: the SPA has no signed-in flag; `/api/` accepts anonymous callers and sends backends a JWT with no user claim; CSRF tokens are minted but never verified (`07-security-and-auth.md` R1-R3).
+2. No database: the session snapshot is the only persisted state (`06-data-model.md`).
+3. Remote identifiers are hard-coded in four places (`05-*`, `12-*` C1).
+4. Local dev needs three processes; two `CONTRIBUTING.md` commands are incomplete (`09-*`, Q41, Q42).
+5. CI may not fail on formatting, and does not typecheck the host or run mock tests (Q40, Q12).
 
-## Top open questions
+## Questions for maintainers
 
-Q21/Q8/Q38 (proxy auth, CSRF, token delivery), Q26 (authorisation model), Q30 (SPA sign-in state), Q29 (headers), Q40 (format check), Q41/Q42 (CONTRIBUTING gaps), Q1 (ADR-0001 image), Q4 (canonical GitHub org).
+See the shortlist at the top of `11-open-questions-and-discrepancies.md` (Q21/Q8/Q38, Q26, Q22/Q27, Q29/Q11/Q35, Q1, Q40/Q12, Q41/Q42/Q3, Q4).
 
-## Remaining work
+## Suggested next steps (optional, on request)
 
-| Order | Batch | Output |
-| --- | --- | --- |
-| **12 (next, last planned)** | **`AUDIT`: Phase 6 consolidation** | Cross-check every doc: stale or wrong line citations (sample-verify against source), contradictions between docs, items still labelled Inferred or Unknown that later batches verified; refresh `00-project-overview.md` (still marked provisional; system map now verified) and `01-repository-map.md` subsystem statuses; tidy `11-*` (close Q6, answered by batch 5; strike resolved items; add a short "questions for maintainers" shortlist); final README reading path and phase status; mark Phase 6 complete only if the ledger supports it |
-| Later (optional) | Test-body review | read test bodies for the highest-risk areas (callback guards, proxy, session middleware) if deeper test-coverage evidence is wanted |
-| Later (on change) | `UPDATE <scope>` | re-inspect when `main` moves past `5ff58a7` |
-
-## Next batch (precise)
-
-**Batch 12: `AUDIT`.** Re-read all docs; sample-verify about 30 citations against the staged sources (prioritise `07`, `workflows/api-proxy.md`, `subsystems/sessions.md`); fix contradictions; update `00`, `01`, `11`, README; produce an audit summary section in `03-coverage-ledger.md`.
-
-Suggested command: `CONTINUE` (or `AUDIT`)
+| Command | When |
+| --- | --- |
+| `UPDATE <scope>` | after `main` moves past `5ff58a7`: re-inspect changed files and update affected docs |
+| `TRACE <route>` / `FEATURE <name>` / `IMPACT <change>` | targeted questions; answer from existing docs plus fresh code reads |
+| Test-body review | if deeper evidence of test coverage is wanted (start with `auth_test.go` callback cases, `proxy_test.go`, `middleware/session_test.go`) |
+| Small docs PRs to the repo | Q3, Q41, Q42 fixes to `CONTRIBUTING.md` and `apps/mock-edupass/README.md` (separate branch, not this docs branch) |
 
 ## Diagram validation
 
-All 30 Mermaid blocks parse with mermaid 11.4.1. Visual layout not reviewed.
+All Mermaid blocks parse with mermaid 11.4.1. Visual layout not reviewed.

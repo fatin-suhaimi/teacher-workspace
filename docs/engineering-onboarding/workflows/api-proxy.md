@@ -85,7 +85,7 @@ What a remote backend receives (Verified from code and tests):
 | Signing key | the app's `TW_REMOTE_..._BACKEND_SIGNING_KEY` (at least 32 bytes, shared secret) |
 | User identity | **none**: no `sub`, email, roles or school |
 | Client IP / forwarding headers | not set by TW (`SetXForwarded` is not called). With a `Rewrite` hook, the stdlib also drops inbound `X-Forwarded-*` (Inferred, `net/http/httputil` behaviour) |
-| Request ID | not forwarded at this revision (no header set in `Rewrite`); RequestID middleware not yet read (batch 6) |
+| Request ID | TW's own ID is not forwarded (no header set in `Rewrite`); a client-supplied `X-Request-ID` passes through unchanged (Verified in batch 6, `subsystems/observability.md` section 5) |
 
 What a backend should verify (recommendation, mirroring the test at `proxy_test.go:243-250`): signature with the shared key, algorithm restricted to HS256, `iss == "tw"`, `aud` contains its own code, and `exp` not passed (allowing small clock skew).
 
