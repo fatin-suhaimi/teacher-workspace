@@ -1,6 +1,6 @@
 # 03 Coverage Ledger
 
-Revision: `main` @ `5ff58a7`. Last updated: batch 6, request ID and logging (2026-10-09). All server source files are now inspected. Statuses: `inspected`, `partially inspected`, `identified`, `excluded (reason)`, `inaccessible`. "Inspected" means read in full at this revision, not that every call has been traced.
+Revision: `main` @ `5ff58a7`. Last updated: batch 7, host shell UI (2026-10-09). All server source files and all hand-written host source files are now inspected; only shadcn-generated `components/ui/*` remain. Statuses: `inspected`, `partially inspected`, `identified`, `excluded (reason)`, `inaccessible`. "Inspected" means read in full at this revision, not that every call has been traced.
 
 ## Summary
 
@@ -8,7 +8,7 @@ Revision: `main` @ `5ff58a7`. Last updated: batch 6, request ID and logging (202
 | --- | --- | --- | --- | --- | --- |
 | Server Go source (non-test) | 21 | 21 | 0 | 0 | 0 |
 | Server Go tests | 18 | 1 | 16 | 1 | 0 |
-| Host app source + config (excl. assets, dist) | 33 | 12 | 0 | 21 | 0 |
+| Host app source + config (excl. assets, dist) | 33 | 24 | 0 | 9 | 0 |
 | mock-edupass source + tests + config | 10 | 6 | 1 | 3 | 0 |
 | Build, CI/CD, tooling, root config | 22 | 15 | 0 | 3 | 4 (lockfiles, `.env`) |
 | Repo docs | 7 | 6 | 1 | 0 | 0 |
@@ -61,11 +61,11 @@ Revision: `main` @ `5ff58a7`. Last updated: batch 6, request ID and logging (202
 | `src/containers/StudentsView.tsx` | inspected | Placeholder heading only |
 | `src/containers/LoginView.tsx` | inspected | login link with `return_to`, error toast for `oauth2_callback_failed` |
 | `src/containers/RootLayout.tsx`, `RemoteLoadFallbackView.tsx` | inspected | layout (sidebar, welcome modal, no auth guard); remote error fallback | subsystems/page-render |
-| `src/containers/{HomeView,NotFoundView}.tsx` | identified |  |
-| `src/components/{AppCard,AppSection,ErrorBoundary,Sidebar,WelcomeModal}.tsx` | identified |  |
+| `src/containers/HomeView.tsx`, `NotFoundView.tsx` | inspected | `APP_SECTIONS` catalogue (8 sections, 18 cards), greeting; 404 view | subsystems/host-shell |
+| `src/components/{AppCard,AppSection,ErrorBoundary,Sidebar,WelcomeModal}.tsx` | inspected | card (internal vs external link), section grid, boundary (no reporting), nav items, first-visit modal (`localStorage`) | subsystems/host-shell |
 | `src/components/ui/*.tsx` (9) | identified | shadcn-generated (CONTRIBUTING: regenerate, do not hand-edit); low review priority |
-| `src/hooks/use-mobile.ts`, `src/helpers/cn.ts`, `src/env.d.ts`, `src/App.css` | identified |  |
-| `components.json` | identified | shadcn config |
+| `src/hooks/use-mobile.ts`, `src/helpers/cn.ts`, `src/env.d.ts`, `src/App.css` | inspected | 768px breakpoint hook; `cn`; Rsbuild types; Tailwind `tw` prefix and design tokens | subsystems/host-shell |
+| `components.json` | inspected | shadcn `base-nova`, prefix `tw`, aliases | subsystems/host-shell |
 | `src/assets/**` | excluded (binary assets: SVG logos, PNG, MP4) |  |
 | `dist/**` | excluded (build output) |  |
 | `node_modules/**`, `.claude/.cc-writes` | excluded (dependencies / tool state) |  |

@@ -3,7 +3,7 @@
 Evidence-backed onboarding docs for Teacher Workspace, built incrementally following `CODEBASE_MASTER_PROMPT.md` (in the claude.ai Project "Teacher Workspace 2.0").
 
 - **Revision analysed:** `main` @ `5ff58a78d09a37a6d662794297d7cdf70aeedb91` (read from `.git/refs/heads/main`; uncommitted local changes were not checked)
-- **Current phase:** Phase 2 in progress. Done: Phase 0, batch 1 (startup/config), batch 2 (sessions and CSRF), batch 3 (Edupass sign-in), batch 4 (page render and static), batch 5 (API proxy), batch 6 (request ID and logging). All server source is now inspected.
+- **Current phase:** Phase 2 in progress. Done: Phase 0, batch 1 (startup/config), batch 2 (sessions and CSRF), batch 3 (Edupass sign-in), batch 4 (page render and static), batch 5 (API proxy), batch 6 (request ID and logging), batch 7 (host shell UI). All server source and all hand-written host source are now inspected.
 - **Last updated:** 2026-10-09
 
 ## Status labels used throughout
@@ -33,6 +33,7 @@ Evidence-backed onboarding docs for Teacher Workspace, built incrementally follo
 | [subsystems/sessions.md](subsystems/sessions.md) | Session model, middleware lifecycle, TTLs, cookie, CSRF, stores, risks | Phase 2 batch 2 |
 | [subsystems/page-render.md](subsystems/page-render.md) | Dev vs prod page rendering, preloaded state contract, static serving, response helpers | Batch 4 |
 | [subsystems/observability.md](subsystems/observability.md) | Request ID, access log, full log catalog, what is missing (metrics, tracing, health, panic recovery), debugging guide | Batch 6 |
+| [subsystems/host-shell.md](subsystems/host-shell.md) | React host: boot sequence, routes, navigation, app catalogue, welcome modal, styling conventions, error handling, integration points | Batch 7 |
 | [workflows/edupass-sign-in.md](workflows/edupass-sign-in.md) | Edupass OIDC sign-in end to end: PKCE, client auth, validation, failures, claims | Batch 3 |
 | [workflows/api-proxy.md](workflows/api-proxy.md) | `/api/` reverse proxy: path mapping, JWT contract for remote backends, failure paths, ADR-0001 gap | Batch 5 |
 | [11-open-questions-and-discrepancies.md](11-open-questions-and-discrepancies.md) | Unknowns and doc/code conflicts | Phase 0 |
