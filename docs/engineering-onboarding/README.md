@@ -3,7 +3,7 @@
 Evidence-backed onboarding docs for Teacher Workspace, built incrementally following `CODEBASE_MASTER_PROMPT.md` (in the claude.ai Project "Teacher Workspace 2.0").
 
 - **Revision analysed:** `main` @ `5ff58a78d09a37a6d662794297d7cdf70aeedb91` (read from `.git/refs/heads/main`; uncommitted local changes were not checked)
-- **Current phase:** Phase 2 in progress. Done: Phase 0, batch 1 (startup/config), batch 2 (sessions and CSRF), batch 3 (Edupass sign-in), batch 4 (page render and static), batch 5 (API proxy), batch 6 (request ID and logging), batch 7 (host shell UI), batch 8 (delivery and local development), batch 9 (security consolidation), batch 10 (data model and glossary). All server source and all hand-written host source are now inspected.
+- **Current phase:** Phase 2 in progress. Done: Phase 0, batch 1 (startup/config), batch 2 (sessions and CSRF), batch 3 (Edupass sign-in), batch 4 (page render and static), batch 5 (API proxy), batch 6 (request ID and logging), batch 7 (host shell UI), batch 8 (delivery and local development), batch 9 (security consolidation), batch 10 (data model and glossary), batch 11 (feature map and change-impact guide). All server source and all hand-written host source are now inspected.
 - **Last updated:** 2026-10-09
 
 ## Status labels used throughout
@@ -24,7 +24,7 @@ Evidence-backed onboarding docs for Teacher Workspace, built incrementally follo
 | [02-architecture.md](02-architecture.md) | Layering, containers, startup/shutdown, config loading and reference, middleware order | Phase 1 batch 1 |
 | [03-coverage-ledger.md](03-coverage-ledger.md) | Per-file review status | Phase 0 |
 | [04-api-catalog.md](04-api-catalog.md) | Every route/interface | Server routes complete; mock-edupass routes listed |
-| 05-feature-to-code-map.md | Feature to code traceability | Not started |
+| [05-feature-to-code-map.md](05-feature-to-code-map.md) | 15 features traced from UI to routes, handlers, data, external deps, tests and docs; shared dependencies and blast radius | Batch 11 |
 | [06-data-model.md](06-data-model.md) | Every persisted and transmitted structure (session snapshot, preloaded state, JWTs, ID token), who writes and reads it, invariants, identity data gap | Batch 10 |
 | [07-security-and-auth.md](07-security-and-auth.md) | Trust boundaries, identity flow, controls in place, authorisation gap, sensitive data, prioritised risk register (R1-R14) | Batch 9 |
 | [08-infrastructure-and-operations.md](08-infrastructure-and-operations.md) | Image build, CI, release, runtime topology (provisional), operational characteristics, supply-chain guards | Batch 8 |
@@ -37,7 +37,7 @@ Evidence-backed onboarding docs for Teacher Workspace, built incrementally follo
 | [workflows/edupass-sign-in.md](workflows/edupass-sign-in.md) | Edupass OIDC sign-in end to end: PKCE, client auth, validation, failures, claims | Batch 3 |
 | [workflows/api-proxy.md](workflows/api-proxy.md) | `/api/` reverse proxy: path mapping, JWT contract for remote backends, failure paths, ADR-0001 gap | Batch 5 |
 | [11-open-questions-and-discrepancies.md](11-open-questions-and-discrepancies.md) | Unknowns and doc/code conflicts | Phase 0 |
-| 12-change-impact-guide.md | Where changes ripple | Not started |
+| [12-change-impact-guide.md](12-change-impact-guide.md) | 14 change recipes: files, tests, docs, partner impact, release impact | Batch 11 |
 | [13-session-handoff.md](13-session-handoff.md) | Resume checkpoint for the next session | Current |
 
 ## Suggested reading path (so far)
