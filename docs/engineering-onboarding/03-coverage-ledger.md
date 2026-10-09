@@ -1,6 +1,6 @@
 # 03 Coverage Ledger
 
-Revision: `main` @ `5ff58a7`. Last updated: batch 7, host shell UI (2026-10-09). All server source files and all hand-written host source files are now inspected; only shadcn-generated `components/ui/*` remain. Statuses: `inspected`, `partially inspected`, `identified`, `excluded (reason)`, `inaccessible`. "Inspected" means read in full at this revision, not that every call has been traced.
+Revision: `main` @ `5ff58a7`. Last updated: batch 8, delivery and local development (2026-10-09). All server source files and all hand-written host source files are now inspected; only shadcn-generated `components/ui/*` remain. Statuses: `inspected`, `partially inspected`, `identified`, `excluded (reason)`, `inaccessible`. "Inspected" means read in full at this revision, not that every call has been traced.
 
 ## Summary
 
@@ -9,9 +9,9 @@ Revision: `main` @ `5ff58a7`. Last updated: batch 7, host shell UI (2026-10-09).
 | Server Go source (non-test) | 21 | 21 | 0 | 0 | 0 |
 | Server Go tests | 18 | 1 | 16 | 1 | 0 |
 | Host app source + config (excl. assets, dist) | 33 | 24 | 0 | 9 | 0 |
-| mock-edupass source + tests + config | 10 | 6 | 1 | 3 | 0 |
-| Build, CI/CD, tooling, root config | 22 | 15 | 0 | 3 | 4 (lockfiles, `.env`) |
-| Repo docs | 7 | 6 | 1 | 0 | 0 |
+| mock-edupass source + tests + config | 10 | 7 | 2 | 1 | 0 |
+| Build, CI/CD, tooling, root config | 22 | 18 | 0 | 0 | 4 (lockfiles, `.env`) |
+| Repo docs | 7 | 7 | 0 | 0 | 0 |
 
 ## Server (Go)
 
@@ -73,12 +73,13 @@ Revision: `main` @ `5ff58a7`. Last updated: batch 7, host shell UI (2026-10-09).
 ## mock-edupass (`apps/mock-edupass`)
 
 | Path | Status | Notes |
-| --- | --- | --- |
+| --- | --- | --- | --- |
 | `package.json`, `README.md`, `src/index.ts`, `src/app.ts` | inspected | auto-login, 8 fake accounts per README |
 | `src/config.ts`, `src/provider.ts` | inspected | `loadConfig`; `createProvider`, `accounts` (8 fixtures), PS256 + `x5t#S256` check, PKCE required, `account` extra param |
 | `test/api.test.ts` (~57 KB) | partially inspected | case names reviewed |
-| `test/config.test.ts`, `test/helpers.ts` | identified |  |
-| `tsconfig.json` | identified |  |
+| `test/config.test.ts` | partially inspected | case names reviewed | 09 |
+| `test/helpers.ts` | identified |  |
+| `tsconfig.json` | inspected | NodeNext, strict, includes `src` and `test` | 09 |
 
 ## Build, CI/CD, tooling, root
 
@@ -89,8 +90,8 @@ Revision: `main` @ `5ff58a7`. Last updated: batch 7, host shell UI (2026-10-09).
 | `go.mod`, `package.json`, `pnpm-workspace.yaml`, `mise.toml`, `lefthook.yml`, `.golangci.yaml`, `.gitignore` | inspected |
 | `.env.example` | inspected (keys and comments; values not reproduced) |
 | `.vscode/settings.json` | inspected |
-| `.vscode/extensions.json` | identified |
-| `.oxlintrc.json`, `.oxfmtrc.json` | identified |
+| `.vscode/extensions.json` | inspected |
+| `.oxlintrc.json`, `.oxfmtrc.json` | inspected |
 | `go.sum`, `pnpm-lock.yaml`, `mise.lock` | excluded (lockfiles) |
 | `.env` | excluded (local secrets; deliberately not read) |
 | `.git/**` | excluded (only `HEAD` and `refs/heads/main` read for the revision) |
@@ -101,7 +102,7 @@ Revision: `main` @ `5ff58a7`. Last updated: batch 7, host shell UI (2026-10-09).
 | --- | --- | --- |
 | `README.md`, `CLAUDE.md`, `CONTRIBUTING.md`, `CHANGELOG.md` | inspected | Treated as intent, not proof |
 | `docs/adr/0001-*.md`, `docs/adr/0002-*.md` | inspected | See discrepancies Q1, Q2 |
-| `docs/go-test-conventions.md` | partially inspected | First section only |
+| `docs/go-test-conventions.md` | inspected | summarised in 09 section 4 |
 
 ## Interface coverage
 

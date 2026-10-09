@@ -3,7 +3,7 @@
 Evidence-backed onboarding docs for Teacher Workspace, built incrementally following `CODEBASE_MASTER_PROMPT.md` (in the claude.ai Project "Teacher Workspace 2.0").
 
 - **Revision analysed:** `main` @ `5ff58a78d09a37a6d662794297d7cdf70aeedb91` (read from `.git/refs/heads/main`; uncommitted local changes were not checked)
-- **Current phase:** Phase 2 in progress. Done: Phase 0, batch 1 (startup/config), batch 2 (sessions and CSRF), batch 3 (Edupass sign-in), batch 4 (page render and static), batch 5 (API proxy), batch 6 (request ID and logging), batch 7 (host shell UI). All server source and all hand-written host source are now inspected.
+- **Current phase:** Phase 2 in progress. Done: Phase 0, batch 1 (startup/config), batch 2 (sessions and CSRF), batch 3 (Edupass sign-in), batch 4 (page render and static), batch 5 (API proxy), batch 6 (request ID and logging), batch 7 (host shell UI), batch 8 (delivery and local development). All server source and all hand-written host source are now inspected.
 - **Last updated:** 2026-10-09
 
 ## Status labels used throughout
@@ -27,8 +27,8 @@ Evidence-backed onboarding docs for Teacher Workspace, built incrementally follo
 | 05-feature-to-code-map.md | Feature to code traceability | Not started |
 | 06-data-model.md | Session data, tokens, stored state | Not started |
 | 07-security-and-auth.md | Edupass OIDC, sessions, CSRF, signed tokens | Not started |
-| 08-infrastructure-and-operations.md | Docker, ECR, release, runtime config | Not started |
-| 09-local-development-and-testing.md | Running and testing locally | Not started |
+| [08-infrastructure-and-operations.md](08-infrastructure-and-operations.md) | Image build, CI, release, runtime topology (provisional), operational characteristics, supply-chain guards | Batch 8 |
+| [09-local-development-and-testing.md](09-local-development-and-testing.md) | Toolchain, setup, running all local processes, signing in, tests, lint/format/hooks, conventions, troubleshooting | Batch 8 |
 | 10-business-glossary.md | Domain terms | Not started |
 | [subsystems/sessions.md](subsystems/sessions.md) | Session model, middleware lifecycle, TTLs, cookie, CSRF, stores, risks | Phase 2 batch 2 |
 | [subsystems/page-render.md](subsystems/page-render.md) | Dev vs prod page rendering, preloaded state contract, static serving, response helpers | Batch 4 |
@@ -45,5 +45,6 @@ Evidence-backed onboarding docs for Teacher Workspace, built incrementally follo
 1. `00-project-overview.md`
 2. `01-repository-map.md`
 3. `02-architecture.md`
-4. Repo's own docs: `CONTRIBUTING.md`, `docs/adr/0001-*`, `docs/adr/0002-*`
-5. `13-session-handoff.md` for what to look at next
+4. `09-local-development-and-testing.md` (get it running)
+5. Repo's own docs: `CONTRIBUTING.md`, `docs/adr/0001-*`, `docs/adr/0002-*`
+6. `13-session-handoff.md` for what to look at next
