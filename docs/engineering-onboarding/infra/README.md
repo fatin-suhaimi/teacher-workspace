@@ -5,7 +5,7 @@ Evidence-backed onboarding docs for how Teacher Workspace (TW) is deployed, buil
 - **Source repo:** `dxd-transform-infrastructure` (local clone `~/dxd-transform-infrastructure`), title "MOE DIVA Infra"
 - **Revision analysed:** `main` @ `b345a0632a34c1e8400bb111262c5f0352763ef1` (from `.git/refs/heads/main`; uncommitted changes not checked)
 - **App revision these docs compare against:** teacher-workspace `main` @ `5ff58a7`
-- **Status:** Phase 0 (inventory and plan) and Phase 1 batches 1-2 (runtime; edge and network) complete, 2026-10-10. Docs not yet traced by a Phase 1 batch stay provisional.
+- **Status:** Phase 0 (inventory and plan) and Phase 1 batches 1-3 (runtime; edge and network; data and secrets) complete, 2026-10-10. Docs not yet traced by a Phase 1 batch stay provisional.
 - **Started fresh on 2026-10-10.** Earlier infra notes from 2026-10-09/10 were discarded at the user's request and not reused.
 
 ## Scope
@@ -43,5 +43,6 @@ Note: the infra repo describes **intended** state. What is actually deployed (ap
 | [02-infra-runtime.md](02-infra-runtime.md) | ECS services and task definitions per environment, env var and secret mapping against the app's config, startup outcome, IAM and security groups |
 | [03-infra-coverage-ledger.md](03-infra-coverage-ledger.md) | Per-file review status for the TW slice of the infra repo |
 | [04-infra-edge-and-network.md](04-infra-edge-and-network.md) | Network layout, inbound path (DNS, ALB, TLS, WAF, health checks), outbound path (NAT, firewall allowlist), PrivateLink to Parents Gateway |
+| [05-infra-data-and-secrets.md](05-infra-data-and-secrets.md) | Valkey session store (TLS, auth, expected URL shape), Secrets Manager containers and their keys, Edupass credential wiring, KMS access, bootstrap order |
 | [11-infra-open-questions.md](11-infra-open-questions.md) | Infra conflicts and open questions (IQ numbers) |
 | [13-infra-session-handoff.md](13-infra-session-handoff.md) | Resume checkpoint and next batch |

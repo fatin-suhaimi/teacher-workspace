@@ -1,19 +1,20 @@
 # 03 Infra Coverage Ledger (TW slice)
 
-Infra revision: `main` @ `b345a06`. Last updated: Phase 1 batch 2, edge and network (2026-10-10). Paths relative to `infra/states/provider.aws/` unless shown otherwise. Statuses: `inspected` (read in full), `partially inspected`, `identified`, `excluded (reason)`, `inaccessible`.
+Infra revision: `main` @ `b345a06`. Last updated: Phase 1 batch 3, data and secrets (2026-10-10). Paths relative to `infra/states/provider.aws/` unless shown otherwise. Statuses: `inspected` (read in full), `partially inspected`, `identified`, `excluded (reason)`, `inaccessible`.
 
 Scope rule: only TW and what it connects to (see `README.md`). Other products' `svc.*` directories are excluded as out of scope and not listed individually.
 
 ## Summary
 
 | Area | Files | Inspected | Partially | Identified | Excluded / inaccessible |
-| --- | --- | --- | --- | --- | --- |
+| --- | --- | --- | --- | --- | --- | --- |
 | `svc.teacher-workspace` (dev, stg, prd) | 22 `.hcl` | 22 | 0 | 0 | `.terraform.lock.hcl` and `.terragrunt-cache` excluded |
 | Connected services (`svc.tw-pg`, `svc.mock-pg`) | 4 | 4 | 0 | 0 |  |
 | `svc.tw-ci` (relation unknown) | 9 (8 `.hcl` + `init.sql`) | 1 | 1 | 7 | pending IQ1 |
 | Shared stacks naming TW | 7 | 2 | 5 | 0 |  |
-| Shared platform stacks | 25 (Phase 0's 23 + `env.dev/private-namespace` + `shared/common-waf-config.hcl`) | 11 | 2 | 12 | rest searched for TW names only |
-| Local modules (`infra/modules/aws/*`) | 10 read | 6 | 4 | 0 | only the files TW stacks rely on |
+| Shared platform stacks | 25 (Phase 0's 23 + `env.dev/private-namespace` + `shared/common-waf-config.hcl`; `acct.{lower,stg}/kms` counted below) | 11 | 2 | 12 |
+| Account KMS stacks (`acct.{lower,stg}/kms/ap-southeast-1`) | 2 | 2 | 0 | 0 | prd and mgmt not read | rest searched for TW names only |
+| Local modules (`infra/modules/aws/*`) | 14 read | 10 | 4 | 0 | only the files TW stacks rely on |
 | Pipelines | 7 | 7 | 0 | 0 | external `cicd-templates` inaccessible |
 | Repo docs (TW-relevant) | 8 | 5 | 2 | 1 | other ADRs, RFCs, product docs excluded |
 
@@ -25,15 +26,15 @@ Scope rule: only TW and what it connects to (see `README.md`). Other products' `
 | `.../env.dev/svc.teacher-workspace/ecs-services/mock-edupass/terragrunt.hcl` | inspected (line by line, batch 1) | mock IdP service, `MOCK_EDUPASS_*`, Service Connect |
 | `.../env.dev/svc.teacher-workspace/ecs-services/dev-console/` | identified | `.terragrunt-cache` and `tfplan` only, no config (IQ8) |
 | `.../env.dev/svc.teacher-workspace/alb/terragrunt.hcl`, `target-groups.hcl`, `https-listener-rules.hcl` | inspected (line by line, batch 2; `04-infra-edge-and-network.md`) | ALB, TGs `main` :3000 and `mock-edupass` :9000, host rules 101/102 |
-| `.../env.dev/svc.teacher-workspace/elasticache/cache/terragrunt.hcl` | inspected | Valkey replication group |
-| `.../env.dev/svc.teacher-workspace/elasticache/user-group/terragrunt.hcl` | inspected | default user, manual apply |
-| `.../env.dev/svc.teacher-workspace/secrets/terragrunt.hcl` | inspected | `init`, `edupass/oidc-client-credentials` |
+| `.../env.dev/svc.teacher-workspace/elasticache/cache/terragrunt.hcl` | inspected (line by line, batch 3; `05-infra-data-and-secrets.md`) | Valkey replication group |
+| `.../env.dev/svc.teacher-workspace/elasticache/user-group/terragrunt.hcl` | inspected (line by line, batch 3) | named user `teacher-workspace-valkey-default`, manual apply |
+| `.../env.dev/svc.teacher-workspace/secrets/terragrunt.hcl` | inspected (line by line, batch 3) | `init`, `edupass/oidc-client-credentials` (`private_key`, `certificate`) |
 | `.../env.dev/svc.teacher-workspace/cloudfront/terragrunt.hcl`, `s3/terragrunt.hcl` | inspected | marketing site `dev-tw.edutech.works` |
 | `.../env.dev/svc.teacher-workspace/pg-connect/vpc-ep-pg/terragrunt.hcl` | inspected (batch 2) | VPC endpoint to Parents Gateway "pre" endpoint service |
 | `acct.stg/env.stg/svc.teacher-workspace/ecs-services/main/terragrunt.hcl` | inspected (full diff vs dev, batch 1) | Edupass placeholders `edupass.invalid`, adds Student Insights signing key |
-| `acct.stg/.../alb/*` (3 files), `elasticache/*` (2), `secrets` | inspected (diff vs dev; ALB diff redone in batch 2) | stg host only; otherwise same as dev |
+| `acct.stg/.../alb/*` (3 files), `elasticache/*` (2), `secrets` | inspected (diff vs dev; ALB redone in batch 2, Valkey and secrets in batch 3: identical except the `init` description) | stg host only; otherwise same as dev |
 | `acct.prd/env.prd/svc.teacher-workspace/cloudfront`, `s3`, `pg-connect/vpc-ep-pg` | inspected (diff vs dev) | `tw.digital.moe.gov.sg`, prd WAF, prd PG endpoint service |
-| `acct.prd/.../secrets/terragrunt.hcl` | inspected | `edupass/oidc-client-credentials` only |
+| `acct.prd/.../secrets/terragrunt.hcl` | inspected (batch 3) | `edupass/oidc-client-credentials` only |
 | `acct.prd/.../secrets/.terragrunt-cache/**` | excluded (generated cache) |  |
 | all `.terraform.lock.hcl` | excluded (provider lock files) |  |
 
@@ -94,6 +95,8 @@ Scope rule: only TW and what it connects to (see `README.md`). Other products' `
 | `infra/modules/aws/network/terraform-aws-vpc/network-firewall.tf` | partially inspected (routes, subnets) | edge routing L64-95 |
 | `infra/modules/aws/network/routes/main.tf` | inspected | not used by TW stacks |
 | `infra/modules/aws/network/vpc-endpoints/{main,sgrp,data,variables}.tf` | inspected | PG endpoint; `auto_accept` unused; 443 from VPC CIDR |
+| `infra/modules/aws/secrets/{main,variables,data,outputs}.tf` | inspected (batch 3) | containers only, `prevent_destroy`, optional resource policies |
+| `infra/modules/aws/kms/**` | identified | how `role/*-exec` patterns become policy conditions not read |
 
 ## App files read for comparison (teacher-workspace `5ff58a7`)
 
@@ -115,7 +118,7 @@ Tracked from Phase 1 onward.
 | --- | --- | --- | --- |
 | ECS task start: secrets, config load and validation, Valkey client, listen | yes (batch 1) | `02-infra-runtime.md` section 2 | yes (exit points, circuit breaker) |
 | Browser to ALB to TW app (dev, stg) | yes (batch 2) | `04` section 2 | yes (404 default, health, timeouts, WAF) |
-| TW app to Valkey | network only (batch 2); TLS and auth in batch 3 | `04` section 4 | no |
+| TW app to Valkey | yes (batches 2-3) | `05` 4.2 (bootstrap) | yes (URL shape, TLS, auth, single node) |
 | TW app to Edupass / mock-edupass | yes for dev mock (batches 1-2); real Edupass host Unknown | `04` section 4 | partial (WAF hairpin risk, IQ26) |
 | TW app to Parents Gateway (PrivateLink) | infra side yes (batch 2); not wired in the app (IQ3) | `04` section 4 | partial |
 | Browser to `pg` remote (tw-pg CloudFront) | no | provisional only | no |
