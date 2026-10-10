@@ -10,6 +10,7 @@
   - Phase 1 batch 1, runtime (2026-10-10): `02-infra-runtime.md`.
   - Phase 1 batch 2, edge and network (2026-10-10): `04-infra-edge-and-network.md`.
   - Phase 1 batch 3, data and secrets (2026-10-10): `05-infra-data-and-secrets.md`.
+  - Phase 1 batch 4, static sites (2026-10-10): `06-infra-static-sites.md`.
 - **Working constraints:**
   - Discovery is read-only (list and stage files).
   - Never run git, terraform, terragrunt, aws or any other shell command on the user's machine. When something needs running (for example `git ls-files`), give the exact command for the user to run and paste back.
@@ -44,7 +45,10 @@
    - Required URL shape: `valkey://teacher-workspace-valkey-default:<encoded password>@<primary endpoint>:6379?tls=true`.
    - Secrets are empty containers filled by hand; `init` keys are documented only in the task definitions (IQ31). The Edupass secret holds `private_key` and `certificate` for `private_key_jwt`; wiring steps in `05` 3.3 (IQ20). No cert-expiry alert (IQ30).
    - KMS `ServicesSecretsKey` lets every `*-exec`/`*-task` role decrypt, so IAM is the only gate (IQ31).
-8. **Doc conflicts.**
+8. **Static sites (batch 4).**
+   - Marketing site (dev `dev-tw.edutech.works`, prd `tw.digital.moe.gov.sg`): S3 + CloudFront + OAC, Singapore only, WAF default block with SEED (dev) or SSOE + SEED (prd) allowlists; prd WAF logging off (IQ32). No content source or uploader found (IQ33).
+   - `svc.tw-pg` (dev only): writable by the lower `transform-gitlab` role, no alias, no WAF, no CORS headers, `CachingOptimized`. Not usable as the posts manifest URL until CORS, cache control and a hostname are added (IQ3, IQ34).
+9. **Doc conflicts.**
    - `ARCHITECTURE.md` says TW is a static site (IQ4).
    - Infra ADR-0001's PG hostname differs from the repo's (IQ5).
    - The TW repo is referred to under three GitHub org names (IQ10).
@@ -56,25 +60,24 @@
 | 1 (done) | Runtime: ECS services and task config | 1 | `svc.teacher-workspace/ecs-services/main` (dev, stg), `ecs-services/mock-edupass` (dev); `env.{dev,stg}/ecs-cluster`; `env.dev/private-namespace`; `globals.hcl` naming; `acct-vars.hcl` subnets and VPC | `infra/02-infra-runtime.md`: task definition per env, a full env-var and secret mapping table against app config (`02-architecture.md` section 6), IAM roles, security groups, deploy settings, Service Connect; resolve or sharpen IQ2, IQ3, IQ13 |
 | 2 (done) | Edge and network | 1 | `svc.teacher-workspace/alb/*` (dev, stg), `env.{dev,stg}/wafv2/*`, ACM, Route53 records, `acct.*/network` (firewall egress allowlist: Edupass, PG, remote hosts), `pg-connect`, `parentsgateway.com.sg` zones, `svc.mock-pg` | `infra/04-infra-edge-and-network.md`: request path diagram, health checks, WAF, TLS, egress, PrivateLink; the TW task's path to `dev-mock-edupass.edutech.works` (out and back through the ALB); IQ5, IQ7, IQ15, IQ18 |
 | 3 (done) | Data and secrets | 1 | `elasticache/*` (dev, stg), `secrets` (all envs), `acct.*/kms`, `infra/modules/aws/secrets` | `infra/05-infra-data-and-secrets.md`: Valkey TLS and auth vs the app's `valkey://` URL parsing, secret keys and owners, manual steps; IQ6 |
-| **4 (next)** | **Static sites** | 1 | marketing `cloudfront`/`s3` (dev, prd), `env.prd/wafv2/us-east-1`, `svc.tw-pg/*` | `infra/06-infra-static-sites.md`: marketing site and PG MFE hosting, who uploads, WAF |
-| 5 | Delivery | 1 | `acct.mgmt/ecr`, `acct.mgmt/iam/{github,gitlab}`, `.gitlab-ci.yml`, `.gitlab/teacher-workspace/*`, Atlantis docs (`docs/atlantis-quirks.md` TW-relevant parts) | `infra/07-infra-delivery.md`: image build to ECR to ECS deploy diagram (joining app `release.yml`/`ci.yml`), rollback; IQ9, IQ10, IQ12 |
+| 4 (done) | Static sites | 1 | marketing `cloudfront`/`s3` (dev, prd), `env.prd/wafv2/us-east-1`, `svc.tw-pg/*` | `infra/06-infra-static-sites.md`: marketing site and PG MFE hosting, who uploads, WAF |
+| **5 (next)** | **Delivery** | 1 | `acct.mgmt/ecr`, `acct.mgmt/iam/{github,gitlab}`, `.gitlab-ci.yml`, `.gitlab/teacher-workspace/*`, Atlantis docs (`docs/atlantis-quirks.md` TW-relevant parts) | `infra/07-infra-delivery.md`: image build to ECR to ECS deploy diagram (joining app `release.yml`/`ci.yml`), rollback; IQ9, IQ10, IQ12 |
 | 6 | Consolidation | 6 | all infra docs, plus app docs `08`, `11`, `07`, `02` | fold verified deployment facts into the app docs (replace Unknowns), audit citations, final handoff |
 
 ## Next batch (precise)
 
-**Phase 1, batch 4: static sites.** Read, line by line:
+**Phase 1, batch 5: delivery.** Read, line by line:
 
-- `acct.lower/env.dev/svc.teacher-workspace/{cloudfront,s3}/terragrunt.hcl` and the prd equivalents (marketing site).
-- `acct.prd/env.prd/wafv2/us-east-1/terragrunt.hcl` and `acct.lower/env.dev/wafv2/us-east-1/terragrunt.hcl` (CloudFront WAFs).
-- `acct.lower/env.dev/svc.tw-pg/{cloudfront,s3}/terragrunt.hcl` (PG micro-frontend hosting).
-- The `tw` record in `acct.mgmt/route53/digital.moe.gov.sg` (L161-169) and `dev-tw` in `edutech.works` (L35-39).
-- `acct.{lower,prd}/acm/us-east-1`.
-- App side: how the host loads a remote manifest (app `subsystems/remote-apps.md` or equivalent) against the `svc.tw-pg` distribution (CORS, cache headers, whether it is a manifest host).
+- `acct.mgmt/ecr/terragrunt.hcl` (TW repositories L516-563: lifecycle, scanning, cross-account pull, tag mutability).
+- `acct.mgmt/iam/github/terragrunt.hcl` and `github-policy.json` (what TW's GitHub Actions may push).
+- `acct.mgmt/iam/gitlab/terragrunt.hcl` and `shared/gitlab-policy.tftpl` (the `transform-gitlab` role: ECS deploy, S3 upload to `tw-pg`, CloudFront invalidation).
+- `.gitlab-ci.yml`, `.gitlab/teacher-workspace/trunk-pipeline.yml`, and the TW-relevant parts of `docs/atlantis-quirks.md` and `docs/github-to-gitlab-mirroring.md`.
+- App side: `.github/workflows/release.yml` and `ci.yml` (image build and push).
 
-Produce `infra/06-infra-static-sites.md`: who uploads what, OAC, WAF and geo rules, TLS, and whether `svc.tw-pg` can serve as `TW_REMOTE_POSTS_MANIFEST_URL` (IQ3).
+Produce `infra/07-infra-delivery.md`: commit to image to ECR to ECS deploy diagram, rollback, who can deploy which env. Close or sharpen IQ9, IQ10, IQ12, IQ19, IQ34.
 
 Suggested command: `CONTINUE`
 
 ## Diagram validation
 
-Mermaid blocks in `00-infra-overview.md` (1), `01-infra-repository-map.md` (1), `02-infra-runtime.md` (1), `04-infra-edge-and-network.md` (2) and `05-infra-data-and-secrets.md` (1) are parse-checked with mermaid 11.4.1; visual layout not reviewed.
+Mermaid blocks in `00-infra-overview.md` (1), `01-infra-repository-map.md` (1), `02-infra-runtime.md` (1), `04-infra-edge-and-network.md` (2), `05-infra-data-and-secrets.md` (1) and `06-infra-static-sites.md` (1) are parse-checked with mermaid 11.4.1; visual layout not reviewed.
