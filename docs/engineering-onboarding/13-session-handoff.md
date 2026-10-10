@@ -23,11 +23,13 @@
 
 ## Infrastructure track
 
-Started fresh 2026-10-10 from `dxd-transform-infrastructure` (TW scope only); Phase 0 done. See `infra/13-infra-session-handoff.md`. Headline: the dev and stg ECS task definitions use env var names (`TW_OIDC_*`, `TW_API_PROXY_*`) that the app at `5ff58a7` does not read (infra IQ2).
+Complete (2026-10-10), from `dxd-transform-infrastructure` @ `b345a06`, TW scope only. Docs are in `infra/`; the resume point and the prioritised maintainer action list are in `infra/13-infra-session-handoff.md`. Verified deployment facts are folded into `02` (deployed values), `07` (R12 update, R15-R18), `08` (topology, deploy, health probe) and `11` (Q11, Q14 resolved, cross-links).
+
+Headline: the dev and stg ECS task definitions use env var names (`TW_OIDC_*`, `TW_API_PROXY_*`) that the app at `5ff58a7` does not read (infra IQ2).
 
 ## Questions for maintainers
 
-See the shortlist at the top of `11-open-questions-and-discrepancies.md` (Q21/Q8/Q38, Q26, Q22/Q27, Q29/Q11/Q35, Q1, Q40/Q12, Q41/Q42/Q3, Q4).
+See the shortlist at the top of `11-open-questions-and-discrepancies.md` (Q21/Q8/Q38, Q26, Q22/Q27, Q29/Q11/Q35, Q1, Q40/Q12, Q41/Q42/Q3, Q4, then the infra list).
 
 ## Suggested next steps (optional, on request)
 

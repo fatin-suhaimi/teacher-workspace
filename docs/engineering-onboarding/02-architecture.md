@@ -225,6 +225,8 @@ All variables are read by `config.Config` (`config.go:27-441`). "Required" means
 
 `IsPostsRegistered()` / `IsStudentInsightsRegistered()` report whether all three are set (`config.go:527-536`); their callers are `index.go:27-31` (remote list) and `proxy.go:28-41` (backend table).
 
+**Deployed values.** The dev and stg ECS task definitions, at infra revision `b345a06`, set these under older names: `TW_OIDC_*` instead of `TW_EDUPASS_*`, `TW_OIDC_JWKS_URI` instead of `TW_EDUPASS_JWKS_URL`, and `TW_API_PROXY_*_SIGNING_KEY` instead of `TW_REMOTE_*_BACKEND_SIGNING_KEY`. Unknown names are ignored, so an image from this revision would fail validation at startup there. The variable-by-variable mapping, and the safe order for fixing it, are in `infra/02-infra-runtime.md` sections 3 and 5 (infra IQ2, IQ3). The required shape of `TW_SESSION_VALKEY_URL` for the deployed cache is in `infra/05-infra-data-and-secrets.md` 2.3.
+
 ## 7. Request pipeline (middleware order now Verified)
 
 `Chain(h, m...)` makes the **first middleware the outermost** (`middleware.go:10-18`, test `middleware_test.go:11-45`). So `Chain(h.Routes(session), RequestID, RequestLog)` (`main.go:107-111`) runs:

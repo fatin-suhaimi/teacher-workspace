@@ -5,89 +5,81 @@
 - **Docs location:** teacher-workspace fork, branch `docs/engineering-onboarding`, folder `docs/engineering-onboarding/infra/`. Nothing is written to the infra repo.
 - **Scope:** Teacher Workspace and what it connects to only (see `README.md` scope table). Other products are out of scope; `svc.tw-ci` is excluded until IQ1 is answered.
 - **History:** started fresh 2026-10-10. Earlier infra notes (2026-10-09/10) were discarded at the user's request and must not be reused.
-- **Completed:**
-  - Phase 0 (2026-10-10): inventory, footprint per environment, hostnames, entry points, provisional deployment map, ledger, open questions.
-  - Phase 1 batch 1, runtime (2026-10-10): `02-infra-runtime.md`.
-  - Phase 1 batch 2, edge and network (2026-10-10): `04-infra-edge-and-network.md`.
-  - Phase 1 batch 3, data and secrets (2026-10-10): `05-infra-data-and-secrets.md`.
-  - Phase 1 batch 4, static sites (2026-10-10): `06-infra-static-sites.md`.
-  - Phase 1 batch 5, delivery (2026-10-10): `07-infra-delivery.md`. Phase 1 is complete.
+- **Status: complete (2026-10-10).**
+  - Phase 0: inventory, footprint, hostnames, entry points, map, ledger, open questions.
+  - Phase 1 batch 1, runtime: `02-infra-runtime.md`.
+  - Phase 1 batch 2, edge and network: `04-infra-edge-and-network.md`.
+  - Phase 1 batch 3, data and secrets: `05-infra-data-and-secrets.md`.
+  - Phase 1 batch 4, static sites: `06-infra-static-sites.md`.
+  - Phase 1 batch 5, delivery: `07-infra-delivery.md`.
+  - Batch 6, consolidation and audit:
+    - verified deployment facts folded into app docs `02`, `07`, `08` and `11`;
+    - `00` finalised;
+    - ledger summary rebuilt;
+    - 118 line citations in `02` to `07` range-checked against the staged sources (0 out of range);
+    - all Mermaid blocks parse.
 - **Working constraints:**
   - Discovery is read-only (list and stage files).
-  - Never run git, terraform, terragrunt, aws or any other shell command on the user's machine. When something needs running (for example `git ls-files`), give the exact command for the user to run and paste back.
+  - Never run git, terraform, terragrunt, aws or any other shell command on the user's machine. When something needs running, give the exact command for the user to run and paste back.
   - After each batch that changes files, give the copy-paste `git add` / `git commit -m '...'` (single quotes, backticked scope) / `git push -u fork docs/engineering-onboarding`.
-  - Never reproduce secret values; cite file and line instead.
+  - Never reproduce secret values; cite file and line instead. Do not copy personal contact details from `globals.hcl` or elsewhere.
+  - No em-dashes in the docs.
 
-## Key discoveries (provisional)
+## Key discoveries
 
-1. **Per-environment footprint.**
-   - dev: TW app (ECS), mock-edupass (ECS), per-app ALB, Valkey 9.1, a marketing site and a PG VPC endpoint.
-   - stg: app, ALB and Valkey only, with Edupass placeholders.
-   - prd: only the marketing site at `tw.digital.moe.gov.sg` (WAF allows SSOE and SEED IPs only), the Edupass client credential secret and a PG VPC endpoint.
-2. **The task definitions' env var names do not match the app at `5ff58a7`** (traced in batch 1).
-   - They set `TW_OIDC_*` and `TW_API_PROXY_*`; the app reads `TW_EDUPASS_*` (`JWKS_URL`, not `JWKS_URI`) and `TW_REMOTE_*`.
-   - Unknown names are silently ignored, and the seven Edupass settings are required, so an image from `5ff58a7` exits 1 at `Validate` in dev and stg (IQ2).
-   - The dev mock-edupass values agree with the TW task's values, so dev works once the names are fixed.
-3. **Remote apps are unconfigured in infra.** Only signing keys are set, with no manifest or backend URLs. The app treats each remote as all-or-nothing, so renaming the keys alone would also break startup (IQ3). `svc.tw-pg` hosts the PG micro-frontend bundle.
-4. **Deploy paths.**
-   - Only stg has a GitLab deploy job.
-   - How dev is deployed is unknown (IQ9).
-   - The Valkey user group is applied by hand.
-   - Secret values are uploaded out of band.
-5. **Runtime shape (batch 1).** One Fargate task per environment (0.25 vCPU, 512 MB, ARM64), ECS Exec on, no container health check, task security group open to `0.0.0.0/0` on 3000 (IQ18), no `wait_for_steady_state` on `main` (IQ19). The real Edupass credential secret is not read by any task (IQ20). TW `main` is not a Service Connect client; it reaches mock-edupass via its public hostname.
-6. **Edge and network (batch 2).**
-   - Internet-facing per-app ALB in the web subnets; TLS `*.edutech.works`; plain HTTP to the task.
-   - Shared environment WAF: other apps' path allow rules are not host-scoped (IQ25); the Common Rule Set body limits apply to `/api/` (IQ25); the default action injects a secret header that the TW proxy would forward to remote backends (IQ21).
-   - Egress: NAT, then Network Firewall domain allowlist (`.edutech.works`, `.gov.sg`, `.amazonaws.com` allowed). In dev the server reaches mock-edupass through the internet and back through the WAF (IQ26).
-   - PrivateLink to PG in dev and prd only; endpoint open to the whole VPC (IQ22). IQ5 resolved.
-   - ALB idle 300 s vs app keep-alive 60 s (IQ23). Health checks create at least about 4,300 live sessions per environment (IQ7).
-7. **Data and secrets (batch 3).**
-   - Valkey: one `cache.t3.micro` node, TLS required, RBAC user `teacher-workspace-valkey-default` (not `default`), user group applied by hand with `VALKEY_PASSWORD` (password in state, IQ28). Single node logs everyone out on node events (IQ29).
-   - Required URL shape: `valkey://teacher-workspace-valkey-default:<encoded password>@<primary endpoint>:6379?tls=true`.
-   - Secrets are empty containers filled by hand; `init` keys are documented only in the task definitions (IQ31). The Edupass secret holds `private_key` and `certificate` for `private_key_jwt`; wiring steps in `05` 3.3 (IQ20). No cert-expiry alert (IQ30).
-   - KMS `ServicesSecretsKey` lets every `*-exec`/`*-task` role decrypt, so IAM is the only gate (IQ31).
-8. **Static sites (batch 4).**
-   - Marketing site (dev `dev-tw.edutech.works`, prd `tw.digital.moe.gov.sg`): S3 + CloudFront + OAC, Singapore only, WAF default block with SEED (dev) or SSOE + SEED (prd) allowlists; prd WAF logging off (IQ32). No content source or uploader found (IQ33).
-   - `svc.tw-pg` (dev only): writable by the lower `transform-gitlab` role, no alias, no WAF, no CORS headers, `CachingOptimized`. Not usable as the posts manifest URL until CORS, cache control and a hostname are added (IQ3, IQ34).
-9. **Delivery (batch 5).**
-   - GitHub Actions build arm64 images: same-repo PRs push `pr-<N>-<sha>` and `pr-<N>-latest`; a `release: vX.Y.Z (#N)` squash merge pushes `vX.Y.Z` and a git tag. Role inferred to be mgmt `transform-github`.
-   - mgmt ECR: mutable tags, scan on push, no lifecycle policy (IQ37); cross-account pull for lower, stg, prd.
-   - stg deploy: GitLab web pipeline in the infra repo with `image_tag`, plan then deploy of `ecs-services/main` via `transform-gitlab` (templates inaccessible). dev has no pipeline; Atlantis cannot apply `IMAGE_TAG` stacks, so dev is applied by hand (IQ9).
-   - Trust: `transform-github` lets any `transformteamsg` repo push any ECR tag (IQ35); GitLab role has no branch condition (IQ36); `String-sg` would not match the GitHub trust (IQ10).
-10. **Doc conflicts.**
+1. **The task definitions and the app disagree on configuration (IQ2, IQ3).**
+   - dev and stg set `TW_OIDC_*` and `TW_API_PROXY_*`; the app at `5ff58a7` reads `TW_EDUPASS_*` and `TW_REMOTE_*`, and ignores unknown names.
+   - An image from `5ff58a7` would therefore exit at config validation and be rolled back.
+   - Renaming the signing keys without the remote URLs would also fail validation.
+2. **What exists where.**
+   - dev and stg each run one 0.25 vCPU ARM64 Fargate task behind an internet-facing per-app ALB, with the shared environment WAF and single-node Valkey (TLS, named RBAC user).
+   - prd has only the marketing site, the Edupass credential secret and a Parents Gateway endpoint (IQ14).
+3. **Nothing about remotes is wired.**
+   - No manifest or backend URLs are set.
+   - `svc.tw-pg` lacks CORS, cache control and a stable hostname (`06` 3.3).
+   - stg has no Parents Gateway endpoint (IQ15).
+4. **Edge behaviour that affects the app.**
+   - The `GET /` health check creates a session per probe (IQ7).
+   - The ALB idle timeout is 300 s vs the app's 60 s keep-alive (IQ23).
+   - Shared WAF rules apply to `/api/` (IQ25), and a WAF secret header would be forwarded to partner backends (IQ21).
+   - In dev, the server's calls to mock-edupass loop out through NAT and back in through the WAF (IQ26).
+5. **Secrets and data.**
+   - Secrets Manager containers are filled by hand; the `init` keys are documented only in task definitions (IQ31).
+   - The Edupass secret is built for `private_key_jwt` and is not wired (IQ20).
+   - The Valkey password is applied by hand and sits in Terraform state (IQ28).
+6. **Delivery.**
+   - GitHub Actions build images; a GitLab web pipeline deploys stg only; dev is applied from a laptop (IQ9).
+   - ECR tags are mutable with no lifecycle policy (IQ37), and the shared GitHub role can overwrite any repo's tags (IQ35).
 
-- `ARCHITECTURE.md` says TW is a static site (IQ4).
-- Infra ADR-0001's PG hostname differs from the repo's (IQ5).
-- The TW repo is referred to under three GitHub org names (IQ10).
+## Action list for maintainers (priority order)
 
-## Recommended analysis order
+| # | Action | IQ | Where |
+| --- | --- | --- | --- |
+| 1 | Confirm the running image tags in dev and stg; then rename the task definitions' Edupass variables (including `JWKS_URI` to `JWKS_URL`) and drop or complete the remote signing keys | IQ2, IQ3, IQ16 | `02` 3, 5, 7 |
+| 2 | Decide the real Edupass setup: `private_key_jwt` wiring from the existing secret, hostnames and redirect URLs (`tw.digital.moe.gov.sg` is held by the marketing site) | IQ20, IQ11, IQ4 | `05` 3.3, `06` 2.4 |
+| 3 | Restrict who can push TW images (per-repo ECR push, immutable `v*` tags) and confirm GitLab protections on the stg deploy | IQ35, IQ36, IQ10 | `07` 3, 7 |
+| 4 | Before configuring remotes: strip `x-amzn-waf-*` in the proxy, plan WAF handling for `/api/`, and add CORS, cache control and a hostname to `svc.tw-pg` (plus stg and prd copies and a stg PG endpoint) | IQ21, IQ25, IQ3, IQ15, IQ34 | `04` 3, `06` 3 |
+| 5 | Add a health route outside the session layer and point the ALB at it; raise the app keep-alive above the ALB idle timeout | IQ7, IQ23 | `04` 2 |
+| 6 | Tighten the task security group to the ALB, and document the `init` keys and bootstrap order | IQ18, IQ31 | `02` 4.2, `05` 4.2 |
+| 7 | Decide dev deployment (pipeline or documented manual path) and how the mock-edupass image is built | IQ9, IQ12 | `07` 4.3 |
+| 8 | Plan prd (instances, Valkey replica, monitoring) | IQ14, IQ29 | `05` 2.4 |
 
-| Order | Batch | Phase | Files | Output |
-| --- | --- | --- | --- | --- |
-| 1 (done) | Runtime: ECS services and task config | 1 | `svc.teacher-workspace/ecs-services/main` (dev, stg), `ecs-services/mock-edupass` (dev); `env.{dev,stg}/ecs-cluster`; `env.dev/private-namespace`; `globals.hcl` naming; `acct-vars.hcl` subnets and VPC | `infra/02-infra-runtime.md`: task definition per env, a full env-var and secret mapping table against app config (`02-architecture.md` section 6), IAM roles, security groups, deploy settings, Service Connect; resolve or sharpen IQ2, IQ3, IQ13 |
-| 2 (done) | Edge and network | 1 | `svc.teacher-workspace/alb/*` (dev, stg), `env.{dev,stg}/wafv2/*`, ACM, Route53 records, `acct.*/network` (firewall egress allowlist: Edupass, PG, remote hosts), `pg-connect`, `parentsgateway.com.sg` zones, `svc.mock-pg` | `infra/04-infra-edge-and-network.md`: request path diagram, health checks, WAF, TLS, egress, PrivateLink; the TW task's path to `dev-mock-edupass.edutech.works` (out and back through the ALB); IQ5, IQ7, IQ15, IQ18 |
-| 3 (done) | Data and secrets | 1 | `elasticache/*` (dev, stg), `secrets` (all envs), `acct.*/kms`, `infra/modules/aws/secrets` | `infra/05-infra-data-and-secrets.md`: Valkey TLS and auth vs the app's `valkey://` URL parsing, secret keys and owners, manual steps; IQ6 |
-| 4 (done) | Static sites | 1 | marketing `cloudfront`/`s3` (dev, prd), `env.prd/wafv2/us-east-1`, `svc.tw-pg/*` | `infra/06-infra-static-sites.md`: marketing site and PG MFE hosting, who uploads, WAF |
-| 5 (done) | Delivery | 1 | `acct.mgmt/ecr`, `acct.mgmt/iam/{github,gitlab}`, `.gitlab-ci.yml`, `.gitlab/teacher-workspace/*`, Atlantis docs (`docs/atlantis-quirks.md` TW-relevant parts) | `infra/07-infra-delivery.md`: image build to ECR to ECS deploy diagram (joining app `release.yml`/`ci.yml`), rollback; IQ9, IQ10, IQ12 |
-| **6 (next)** | **Consolidation** | 6 | all infra docs, plus app docs `08`, `11`, `07`, `02` | fold verified deployment facts into the app docs (replace Unknowns), audit citations, final handoff |
+## Commands for the user (optional; paste output back)
 
-## Next batch (precise)
+| Purpose | Command | Where to run |
+| --- | --- | --- |
+| When the variable rename happened | `git log -S 'TW_OIDC_' --oneline -- server/` | teacher-workspace repo |
+| Running image and service health | `aws ecs describe-services --cluster transform-dev-cluster --services transform-dev-teacher-workspace-main --query 'services[0].{td:taskDefinition,running:runningCount,events:events[:5].message}'` (and stg) | terminal with read-only AWS access |
+| Who checks the WAF header | `git grep -n 'alb-expecting-this-header'` | infra repo |
 
-**Batch 6: consolidation.** No new infra files. Work through the app docs and the infra docs together:
+## Suggested next steps (on request)
 
-- **App doc `08-infrastructure-and-operations.md`.** Replace the Unknowns about instances, load balancer, Valkey placement, health probes and the deploy path with the verified infra facts, linking to `infra/02` to `infra/07`.
-- **App docs `11-open-questions-and-discrepancies.md`, `07-security-and-auth.md` and `02-architecture.md`.** Cross-link the IQs that answer or sharpen app questions:
-  - Q3: stale `TW_OIDC_*` names, now IQ2.
-  - Q11 and Q23: health route, now IQ7.
-  - Q4: GitHub org, now IQ10.
-  - Q29: security headers, now WAF and edge.
-  - Add the deployed-config view of the env vars to `02` section 6.
-- **Infra `00-infra-overview.md`.** Turn the provisional map into the final one; mark each edge Verified or Inferred from batches 1-5.
-- **Audit.** Spot-check citations in `02` to `07`, re-run the Mermaid checks, check for em-dashes, and recount the ledger.
-- **`13`.** Final handoff, with a prioritised action list for maintainers (top IQs).
-
-Suggested command: `CONTINUE`
+| Command | When |
+| --- | --- |
+| `UPDATE infra` | after the infra repo moves past `b345a06`: re-stage the files listed in `03` and update the affected docs |
+| `TRACE <flow>` | for example "stg deploy" or "sign-in in dev", answered from these docs plus fresh reads |
+| IQ1 follow-up | if `svc.tw-ci` turns out to be part of TW, document it as a new batch |
 
 ## Diagram validation
 
-Mermaid blocks in `00-infra-overview.md` (1), `01-infra-repository-map.md` (1), `02-infra-runtime.md` (1), `04-infra-edge-and-network.md` (2), `05-infra-data-and-secrets.md` (1), `06-infra-static-sites.md` (1) and `07-infra-delivery.md` (1) are parse-checked with mermaid 11.4.1; visual layout not reviewed.
+Mermaid blocks in `00-infra-overview.md` (1), `01-infra-repository-map.md` (1), `02-infra-runtime.md` (1), `04-infra-edge-and-network.md` (2), `05-infra-data-and-secrets.md` (1), `06-infra-static-sites.md` (1) and `07-infra-delivery.md` (1), plus the new topology in app doc `08` (section 4), parse with mermaid 11.4.1. Visual layout not reviewed.

@@ -1,22 +1,28 @@
 # 03 Infra Coverage Ledger (TW slice)
 
-Infra revision: `main` @ `b345a06`. Last updated: Phase 1 batch 5, delivery (2026-10-10). Paths relative to `infra/states/provider.aws/` unless shown otherwise. Statuses: `inspected` (read in full), `partially inspected`, `identified`, `excluded (reason)`, `inaccessible`.
+Infra revision: `main` @ `b345a06`. Last updated: batch 6, consolidation and audit (2026-10-10). Paths relative to `infra/states/provider.aws/` unless shown otherwise. Statuses: `inspected` (read in full), `partially inspected`, `identified`, `excluded (reason)`, `inaccessible`.
 
 Scope rule: only TW and what it connects to (see `README.md`). Other products' `svc.*` directories are excluded as out of scope and not listed individually.
 
 ## Summary
 
-| Area | Files | Inspected | Partially | Identified | Excluded / inaccessible |
-| --- | --- | --- | --- | --- | --- | --- |
+Recounted in batch 6 (audit). The table previously had a misplaced cell from batch 3; fixed here.
+
+| Area | Files | Inspected | Partially | Identified | Notes |
+| --- | --- | --- | --- | --- | --- |
 | `svc.teacher-workspace` (dev, stg, prd) | 22 `.hcl` | 22 | 0 | 0 | `.terraform.lock.hcl` and `.terragrunt-cache` excluded |
 | Connected services (`svc.tw-pg`, `svc.mock-pg`) | 4 | 4 | 0 | 0 |  |
 | `svc.tw-ci` (relation unknown) | 9 (8 `.hcl` + `init.sql`) | 1 | 1 | 7 | pending IQ1 |
-| Shared stacks naming TW | 7 | 2 | 5 | 0 |  |
-| Shared platform stacks | 25 (Phase 0's 23 + `env.dev/private-namespace` + `shared/common-waf-config.hcl`; `acct.{lower,stg}/kms` counted below) | 11 | 2 | 12 |
-| Account KMS stacks (`acct.{lower,stg}/kms/ap-southeast-1`) | 2 | 2 | 0 | 0 | prd and mgmt not read | rest searched for TW names only |
+| Shared stacks naming TW | 7 | 4 | 3 | 0 | PG zones, mgmt `iam/github`, prd CloudFront WAF in full; Route53 zones and ECR by TW lines |
+| Shared platform stacks | 25 (Phase 0's 23, plus `env.dev/private-namespace` and `shared/common-waf-config.hcl`) | 11 | 2 | 12 | the rest were searched for TW names only |
+| Account KMS stacks (`acct.{lower,stg}/kms/ap-southeast-1`) | 2 | 2 | 0 | 0 | prd and mgmt not read |
+| CI and deploy IAM (`iam/gitlab` mgmt, lower, stg; `gitlab-policy.json`; `shared/gitlab-policy.tftpl`; `iam/github/github-policy.json`) | 6 | 6 | 0 | 0 | batch 5 |
 | Local modules (`infra/modules/aws/*`) | 16 read | 12 | 4 | 0 | only the files TW stacks rely on |
 | Pipelines | 7 | 7 | 0 | 0 | external `cicd-templates` inaccessible |
-| Repo docs (TW-relevant) | 8 | 5 | 2 | 1 | other ADRs, RFCs, product docs excluded |
+| Repo docs (TW-relevant) | 9 | 5 | 4 | 0 | `ARCHITECTURE.md`, `AGENTS.md`, `atlantis-quirks.md` and the mirroring how-to only in part; other ADRs, RFCs and product docs excluded |
+| App files read for comparison | 9 (plus app docs `04-api-catalog.md` and `subsystems/host-shell.md`) | 9 | 0 | 0 | see the app section below |
+
+Unread on purpose: deployed state (applied resources, running image tags, secret values), the GitLab job templates, the KMS module's policy rendering, the IP set contents and the dev group's IAM policy. Each one is tied to an IQ.
 
 ## `svc.teacher-workspace`
 
