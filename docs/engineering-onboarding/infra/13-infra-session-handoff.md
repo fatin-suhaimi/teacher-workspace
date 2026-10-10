@@ -11,6 +11,7 @@
   - Phase 1 batch 2, edge and network (2026-10-10): `04-infra-edge-and-network.md`.
   - Phase 1 batch 3, data and secrets (2026-10-10): `05-infra-data-and-secrets.md`.
   - Phase 1 batch 4, static sites (2026-10-10): `06-infra-static-sites.md`.
+  - Phase 1 batch 5, delivery (2026-10-10): `07-infra-delivery.md`. Phase 1 is complete.
 - **Working constraints:**
   - Discovery is read-only (list and stage files).
   - Never run git, terraform, terragrunt, aws or any other shell command on the user's machine. When something needs running (for example `git ls-files`), give the exact command for the user to run and paste back.
@@ -48,10 +49,16 @@
 8. **Static sites (batch 4).**
    - Marketing site (dev `dev-tw.edutech.works`, prd `tw.digital.moe.gov.sg`): S3 + CloudFront + OAC, Singapore only, WAF default block with SEED (dev) or SSOE + SEED (prd) allowlists; prd WAF logging off (IQ32). No content source or uploader found (IQ33).
    - `svc.tw-pg` (dev only): writable by the lower `transform-gitlab` role, no alias, no WAF, no CORS headers, `CachingOptimized`. Not usable as the posts manifest URL until CORS, cache control and a hostname are added (IQ3, IQ34).
-9. **Doc conflicts.**
-   - `ARCHITECTURE.md` says TW is a static site (IQ4).
-   - Infra ADR-0001's PG hostname differs from the repo's (IQ5).
-   - The TW repo is referred to under three GitHub org names (IQ10).
+9. **Delivery (batch 5).**
+   - GitHub Actions build arm64 images: same-repo PRs push `pr-<N>-<sha>` and `pr-<N>-latest`; a `release: vX.Y.Z (#N)` squash merge pushes `vX.Y.Z` and a git tag. Role inferred to be mgmt `transform-github`.
+   - mgmt ECR: mutable tags, scan on push, no lifecycle policy (IQ37); cross-account pull for lower, stg, prd.
+   - stg deploy: GitLab web pipeline in the infra repo with `image_tag`, plan then deploy of `ecs-services/main` via `transform-gitlab` (templates inaccessible). dev has no pipeline; Atlantis cannot apply `IMAGE_TAG` stacks, so dev is applied by hand (IQ9).
+   - Trust: `transform-github` lets any `transformteamsg` repo push any ECR tag (IQ35); GitLab role has no branch condition (IQ36); `String-sg` would not match the GitHub trust (IQ10).
+10. **Doc conflicts.**
+
+- `ARCHITECTURE.md` says TW is a static site (IQ4).
+- Infra ADR-0001's PG hostname differs from the repo's (IQ5).
+- The TW repo is referred to under three GitHub org names (IQ10).
 
 ## Recommended analysis order
 
@@ -61,23 +68,26 @@
 | 2 (done) | Edge and network | 1 | `svc.teacher-workspace/alb/*` (dev, stg), `env.{dev,stg}/wafv2/*`, ACM, Route53 records, `acct.*/network` (firewall egress allowlist: Edupass, PG, remote hosts), `pg-connect`, `parentsgateway.com.sg` zones, `svc.mock-pg` | `infra/04-infra-edge-and-network.md`: request path diagram, health checks, WAF, TLS, egress, PrivateLink; the TW task's path to `dev-mock-edupass.edutech.works` (out and back through the ALB); IQ5, IQ7, IQ15, IQ18 |
 | 3 (done) | Data and secrets | 1 | `elasticache/*` (dev, stg), `secrets` (all envs), `acct.*/kms`, `infra/modules/aws/secrets` | `infra/05-infra-data-and-secrets.md`: Valkey TLS and auth vs the app's `valkey://` URL parsing, secret keys and owners, manual steps; IQ6 |
 | 4 (done) | Static sites | 1 | marketing `cloudfront`/`s3` (dev, prd), `env.prd/wafv2/us-east-1`, `svc.tw-pg/*` | `infra/06-infra-static-sites.md`: marketing site and PG MFE hosting, who uploads, WAF |
-| **5 (next)** | **Delivery** | 1 | `acct.mgmt/ecr`, `acct.mgmt/iam/{github,gitlab}`, `.gitlab-ci.yml`, `.gitlab/teacher-workspace/*`, Atlantis docs (`docs/atlantis-quirks.md` TW-relevant parts) | `infra/07-infra-delivery.md`: image build to ECR to ECS deploy diagram (joining app `release.yml`/`ci.yml`), rollback; IQ9, IQ10, IQ12 |
-| 6 | Consolidation | 6 | all infra docs, plus app docs `08`, `11`, `07`, `02` | fold verified deployment facts into the app docs (replace Unknowns), audit citations, final handoff |
+| 5 (done) | Delivery | 1 | `acct.mgmt/ecr`, `acct.mgmt/iam/{github,gitlab}`, `.gitlab-ci.yml`, `.gitlab/teacher-workspace/*`, Atlantis docs (`docs/atlantis-quirks.md` TW-relevant parts) | `infra/07-infra-delivery.md`: image build to ECR to ECS deploy diagram (joining app `release.yml`/`ci.yml`), rollback; IQ9, IQ10, IQ12 |
+| **6 (next)** | **Consolidation** | 6 | all infra docs, plus app docs `08`, `11`, `07`, `02` | fold verified deployment facts into the app docs (replace Unknowns), audit citations, final handoff |
 
 ## Next batch (precise)
 
-**Phase 1, batch 5: delivery.** Read, line by line:
+**Batch 6: consolidation.** No new infra files. Work through the app docs and the infra docs together:
 
-- `acct.mgmt/ecr/terragrunt.hcl` (TW repositories L516-563: lifecycle, scanning, cross-account pull, tag mutability).
-- `acct.mgmt/iam/github/terragrunt.hcl` and `github-policy.json` (what TW's GitHub Actions may push).
-- `acct.mgmt/iam/gitlab/terragrunt.hcl` and `shared/gitlab-policy.tftpl` (the `transform-gitlab` role: ECS deploy, S3 upload to `tw-pg`, CloudFront invalidation).
-- `.gitlab-ci.yml`, `.gitlab/teacher-workspace/trunk-pipeline.yml`, and the TW-relevant parts of `docs/atlantis-quirks.md` and `docs/github-to-gitlab-mirroring.md`.
-- App side: `.github/workflows/release.yml` and `ci.yml` (image build and push).
-
-Produce `infra/07-infra-delivery.md`: commit to image to ECR to ECS deploy diagram, rollback, who can deploy which env. Close or sharpen IQ9, IQ10, IQ12, IQ19, IQ34.
+- **App doc `08-infrastructure-and-operations.md`.** Replace the Unknowns about instances, load balancer, Valkey placement, health probes and the deploy path with the verified infra facts, linking to `infra/02` to `infra/07`.
+- **App docs `11-open-questions-and-discrepancies.md`, `07-security-and-auth.md` and `02-architecture.md`.** Cross-link the IQs that answer or sharpen app questions:
+  - Q3: stale `TW_OIDC_*` names, now IQ2.
+  - Q11 and Q23: health route, now IQ7.
+  - Q4: GitHub org, now IQ10.
+  - Q29: security headers, now WAF and edge.
+  - Add the deployed-config view of the env vars to `02` section 6.
+- **Infra `00-infra-overview.md`.** Turn the provisional map into the final one; mark each edge Verified or Inferred from batches 1-5.
+- **Audit.** Spot-check citations in `02` to `07`, re-run the Mermaid checks, check for em-dashes, and recount the ledger.
+- **`13`.** Final handoff, with a prioritised action list for maintainers (top IQs).
 
 Suggested command: `CONTINUE`
 
 ## Diagram validation
 
-Mermaid blocks in `00-infra-overview.md` (1), `01-infra-repository-map.md` (1), `02-infra-runtime.md` (1), `04-infra-edge-and-network.md` (2), `05-infra-data-and-secrets.md` (1) and `06-infra-static-sites.md` (1) are parse-checked with mermaid 11.4.1; visual layout not reviewed.
+Mermaid blocks in `00-infra-overview.md` (1), `01-infra-repository-map.md` (1), `02-infra-runtime.md` (1), `04-infra-edge-and-network.md` (2), `05-infra-data-and-secrets.md` (1), `06-infra-static-sites.md` (1) and `07-infra-delivery.md` (1) are parse-checked with mermaid 11.4.1; visual layout not reviewed.

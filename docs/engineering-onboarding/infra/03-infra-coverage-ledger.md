@@ -1,6 +1,6 @@
 # 03 Infra Coverage Ledger (TW slice)
 
-Infra revision: `main` @ `b345a06`. Last updated: Phase 1 batch 4, static sites (2026-10-10). Paths relative to `infra/states/provider.aws/` unless shown otherwise. Statuses: `inspected` (read in full), `partially inspected`, `identified`, `excluded (reason)`, `inaccessible`.
+Infra revision: `main` @ `b345a06`. Last updated: Phase 1 batch 5, delivery (2026-10-10). Paths relative to `infra/states/provider.aws/` unless shown otherwise. Statuses: `inspected` (read in full), `partially inspected`, `identified`, `excluded (reason)`, `inaccessible`.
 
 Scope rule: only TW and what it connects to (see `README.md`). Other products' `svc.*` directories are excluded as out of scope and not listed individually.
 
@@ -14,7 +14,7 @@ Scope rule: only TW and what it connects to (see `README.md`). Other products' `
 | Shared stacks naming TW | 7 | 2 | 5 | 0 |  |
 | Shared platform stacks | 25 (Phase 0's 23 + `env.dev/private-namespace` + `shared/common-waf-config.hcl`; `acct.{lower,stg}/kms` counted below) | 11 | 2 | 12 |
 | Account KMS stacks (`acct.{lower,stg}/kms/ap-southeast-1`) | 2 | 2 | 0 | 0 | prd and mgmt not read | rest searched for TW names only |
-| Local modules (`infra/modules/aws/*`) | 14 read | 10 | 4 | 0 | only the files TW stacks rely on |
+| Local modules (`infra/modules/aws/*`) | 16 read | 12 | 4 | 0 | only the files TW stacks rely on |
 | Pipelines | 7 | 7 | 0 | 0 | external `cicd-templates` inaccessible |
 | Repo docs (TW-relevant) | 8 | 5 | 2 | 1 | other ADRs, RFCs, product docs excluded |
 
@@ -56,12 +56,13 @@ Scope rule: only TW and what it connects to (see `README.md`). Other products' `
 | `acct.lower/route53/edutech.works/terragrunt.hcl` | partially inspected (L1-40, L295-345, zone at L510) | hard-coded ALB names L21, L25; records L35-39, L303-341 |
 | `acct.mgmt/route53/digital.moe.gov.sg/terragrunt.hcl` | partially inspected (L1-30, L150-170; batch 4) | L15, L151-169 |
 | `acct.lower/route53/parentsgateway.com.sg/terragrunt.hcl`, `acct.prd/route53/parentsgateway.com.sg/terragrunt.hcl` | inspected | private zones |
-| `acct.mgmt/ecr/terragrunt.hcl` | partially inspected | L516-563 |
-| `acct.mgmt/iam/github/terragrunt.hcl` | partially inspected | L40-68 trust conditions (subjects L53-64) |
+| `acct.mgmt/ecr/terragrunt.hcl` | partially inspected (L1-60, L505-570; lifecycle search; batch 5) | TW repos L516-531, mock-edupass L548-563; no lifecycle policy |
+| `acct.mgmt/iam/github/terragrunt.hcl`, `github-policy.json` | inspected (batch 5) | role `transform-github`; trust L37-68 (subjects L53-64); ECR push on `*`; `ReadOnlyAccess` |
 | `acct.prd/env.prd/wafv2/us-east-1/terragrunt.hcl` | inspected (batch 4) | default block, allow SSOE + SEED, no logging |
 | `acct.lower/env.dev/wafv2/us-east-1/terragrunt.hcl` | inspected (batch 4) | default block, allow SEED, logging on |
 | `acct.lower/acm/us-east-1`, `acct.prd/acm/us-east-1` | inspected (batch 4) | `*.edutech.works`; `*.digital.moe.gov.sg`, `*.transform.gov.sg` |
-| `acct.mgmt/iam/gitlab/terragrunt.hcl`, `iam/github/github-policy.json` | identified | GitLab and GitHub role policies (Phase 1 batch 5) |
+| `acct.mgmt/iam/gitlab/terragrunt.hcl`, `gitlab-policy.json` | inspected (batch 5) | mgmt GitLab role: ECR push on `*` |
+| `acct.lower/iam/gitlab/terragrunt.hcl`, `acct.stg/iam/gitlab/terragrunt.hcl` (diff), `shared/gitlab-policy.tftpl` | inspected (batch 5) | `transform-gitlab` deploy role: trust, state, ECS, PassRole; no CloudFront |
 | `globals.hcl` | inspected (naming, tags, state; personal contact lines deliberately not copied) | `name_prefixes` L34-44, tags L22-31 |
 | `acct.lower/acct-vars.hcl`, `acct.stg/acct-vars.hcl` | inspected (VPC, subnets, project name) | no VPC CIDR in these files |
 | `acct.lower/env.dev/ecs-cluster/terragrunt.hcl`, `acct.stg/env.stg/ecs-cluster/terragrunt.hcl` | inspected (identical) | `transform-<env>-cluster` |
@@ -77,14 +78,15 @@ Scope rule: only TW and what it connects to (see `README.md`). Other products' `
 
 | Path | Status |
 | --- | --- |
-| `.gitlab-ci.yml` | inspected |
-| `.gitlab/teacher-workspace/trunk-pipeline.yml` | inspected |
+| `.gitlab-ci.yml` | inspected (L1-40 re-read in batch 5) |
+| `.gitlab/teacher-workspace/trunk-pipeline.yml` | inspected (line by line, batch 5; `07-infra-delivery.md`) |
 | `.gitlab/tw-ci/trunk-pipeline.yml`, `child-pipelines/**` (4 files) | inspected |
 | `wog/moe/dxdtransform/dxd-transform/cicd-templates@v2.3.1` (`.plan`, `.deploy`, `.vars:aws-acct:*`, `.rules:pipeline`) | inaccessible (other GitLab project) |
 | `README.md`, `CONTRIBUTING.md`, `CONVENTIONS.md`, `CODEOWNERS`, `docs/adr/0001-*` | inspected |
 | `ARCHITECTURE.md` | partially inspected (L1-500; TW-relevant parts in full) |
 | `AGENTS.md` | partially inspected (headings, Route53 zone table) |
-| `docs/github-to-gitlab-mirroring.md` | identified (headings) |
+| `docs/github-to-gitlab-mirroring.md` | partially inspected (L1-40, headings; batch 5): generic GitHub-to-GitLab pull mirror how-to, no TW specifics |
+| `docs/atlantis-quirks.md` | partially inspected (quirk table L9-21, `image-tag` and `iam` details; batch 5) |
 | other ADRs, RFCs, product docs | excluded (not TW) unless a batch needs them |
 
 ## Local modules read
@@ -98,20 +100,22 @@ Scope rule: only TW and what it connects to (see `README.md`). Other products' `
 | `infra/modules/aws/network/terraform-aws-vpc/network-firewall.tf` | partially inspected (routes, subnets) | edge routing L64-95 |
 | `infra/modules/aws/network/routes/main.tf` | inspected | not used by TW stacks |
 | `infra/modules/aws/network/vpc-endpoints/{main,sgrp,data,variables}.tf` | inspected | PG endpoint; `auto_accept` unused; 443 from VPC CIDR |
+| `infra/modules/aws/ecr/{main,policy}.tf` | inspected (batch 5) | scan on push, lifecycle optional, pull/push policy |
 | `infra/modules/aws/secrets/{main,variables,data,outputs}.tf` | inspected (batch 3) | containers only, `prevent_destroy`, optional resource policies |
 | `infra/modules/aws/kms/**` | identified | how `role/*-exec` patterns become policy conditions not read |
 
 ## App files read for comparison (teacher-workspace `5ff58a7`)
 
-| Path                                 | Why                                                    |
-| ------------------------------------ | ------------------------------------------------------ |
-| `server/internal/config/config.go`   | every `dotenv` name, defaults and validation (batch 1) |
-| `server/pkg/dotenv/dotenv.go`        | unknown variables ignored; missing `.env` allowed      |
-| `server/cmd/tw/main.go`              | startup order and exit points                          |
-| `Dockerfile`                         | image `ENV`, user, port                                |
-| `apps/mock-edupass/src/config.ts`    | `MOCK_EDUPASS_*` names and required settings           |
-| `server/internal/handler/proxy.go`   | headers forwarded to remote backends (batch 2)         |
-| `server/internal/handler/handler.go` | route table vs WAF path rules (batch 2)                |
+| Path | Why |
+| --- | --- |
+| `server/internal/config/config.go` | every `dotenv` name, defaults and validation (batch 1) |
+| `server/pkg/dotenv/dotenv.go` | unknown variables ignored; missing `.env` allowed |
+| `server/cmd/tw/main.go` | startup order and exit points |
+| `Dockerfile` | image `ENV`, user, port |
+| `apps/mock-edupass/src/config.ts` | `MOCK_EDUPASS_*` names and required settings |
+| `server/internal/handler/proxy.go` | headers forwarded to remote backends (batch 2) |
+| `server/internal/handler/handler.go` | route table vs WAF path rules (batch 2) |
+| `.github/workflows/release.yml`, `ci.yml` | image build and push (batch 5) |
 
 ## Interface and flow coverage
 
@@ -126,4 +130,4 @@ Tracked from Phase 1 onward.
 | TW app to Parents Gateway (PrivateLink) | infra side yes (batch 2); not wired in the app (IQ3) | `04` section 4 | partial |
 | Browser to `pg` remote (tw-pg CloudFront) | yes, as configured (batch 4) | `06` 3.2 | yes (CORS, caching) |
 | Marketing site (dev, prd) | yes (batch 4); uploader Unknown | no (table only) | yes (WAF 403, geo) |
-| Image build to ECR to ECS deploy | no | no | no |
+| Image build to ECR to ECS deploy | yes (batch 5; templates inaccessible) | `07` section 1 | yes (rollback, dev gap) |
