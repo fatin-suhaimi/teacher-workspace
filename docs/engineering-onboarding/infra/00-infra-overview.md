@@ -100,13 +100,13 @@ flowchart LR
 | TW to Parents Gateway over PrivateLink | Verified (endpoint and private DNS exist); whether the TW app calls it is Unknown, because the app only proxies to `TW_REMOTE_*_BACKEND_BASE_URL`, which nothing in the infra repo sets (IQ3) | `pg-connect/vpc-ep-pg/terragrunt.hcl`, `parentsgateway.com.sg/terragrunt.hcl`, infra `docs/adr/0001-*` |
 | prd marketing site only reachable from SSOE and SEED IPs | Verified (config) | `acct.prd/env.prd/wafv2/us-east-1/terragrunt.hcl:38-58` |
 
-Mermaid syntax: see the validation note in `13-infra-session-handoff.md`.
+Batches 1 and 2 trace the runtime and network edges in depth: `02-infra-runtime.md`, `04-infra-edge-and-network.md`. Mermaid syntax: see the validation note in `13-infra-session-handoff.md`.
 
 ## 4. First-look findings (to be confirmed in Phase 1)
 
 1. **Env var names in the task definitions do not match the app at `5ff58a7`.** dev and stg set `TW_OIDC_ISSUER_URL`, `TW_OIDC_AUTH_URL`, `TW_OIDC_TOKEN_URL`, `TW_OIDC_JWKS_URI`, `TW_OIDC_REDIRECT_URL`, `TW_OIDC_CLIENT_ID`, `TW_OIDC_CLIENT_SECRET` and `TW_API_PROXY_*_SIGNING_KEY`. The app reads `TW_EDUPASS_*` (with `TW_EDUPASS_JWKS_URL`, not `_URI`) and `TW_REMOTE_*`, and requires the Edupass settings. If the deployed image matches `5ff58a7`, it should fail config validation at startup. Which image is actually deployed is Unknown (IQ2). Traced in batch 1: `02-infra-runtime.md` sections 3 and 5. Evidence: `acct.lower/.../ecs-services/main/terragrunt.hcl:119-181`; app `config.go:243-258, 429-441`.
 2. **Remote apps are not configured.** No task sets the manifest URL or backend base URL for Posts or Student Insights. Only signing keys are set: Posts in dev; Posts and Student Insights in stg (IQ3).
 3. **prd has no TW app.** `ARCHITECTURE.md:48` says TW "is currently served as a static site from S3 and CloudFront". That matches prd, which serves only a marketing site, but not dev or stg, which run the app on ECS (IQ4).
-4. **The Parents Gateway hostname differs from the ADR.** Infra ADR-0001 names `pg-internal.parentsgateway.com`; the repo creates `stable-tw.pre.parentsgateway.com.sg` and `prod-tw.prd.parentsgateway.com.sg` (IQ5).
+4. **The Parents Gateway hostname differs from the ADR.** Infra ADR-0001 names `pg-internal.parentsgateway.com`; the repo creates `stable-tw.pre.parentsgateway.com.sg` and `prod-tw.prd.parentsgateway.com.sg`. Resolved in batch 2: the ADR name was an example (IQ5).
 5. **The dev task definition carries a plaintext client secret** for the mock IdP. It is the mock's own shared value, the same as the app's `.env.example`, not a real credential. Value not reproduced here (IQ6).
-6. **The ALB health check is `GET /` every 5 seconds.** In the app, `/` passes through the session middleware, so each probe creates a stored session. This matches app risk R6 / Q23 (IQ7).
+6. **The ALB health check is `GET /` every 5 seconds** (traced in batch 2, `04-infra-edge-and-network.md` 2.2). In the app, `/` passes through the session middleware, so each probe creates a stored session. This matches app risk R6 / Q23 (IQ7).

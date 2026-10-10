@@ -175,8 +175,8 @@ The `edupass/oidc-client-credentials` secret (all environments) is **not** refer
 
 | Service | Ingress | Egress | Comment |
 | --- | --- | --- | --- |
-| TW `main` (dev, stg) | TCP 3000 from `0.0.0.0/0`, described as "Ingress to app" (dev L199-207, stg L207-215) | all, `0.0.0.0/0` (dev L209-214) | the rule key is `alb_to_app`, but the source is any address, not the ALB security group. Tasks are in private subnets, so anything routable inside the VPC (and anything attached through the account's transit gateway, if routes allow) can reach port 3000 directly, bypassing the ALB and WAF (Inferred; IQ18) |
-| mock-edupass (dev) | TCP 9000 from `172.16.0.0/16`, "from the ALB and Service Connect clients in the Transform VPC" (L135-143) | all (L145-150) | that CIDR is taken to be the Transform VPC (comment; the CIDR is not in `acct-vars.hcl`, so this is Inferred) |
+| TW `main` (dev, stg) | TCP 3000 from `0.0.0.0/0`, described as "Ingress to app" (dev L199-207, stg L207-215) | all, `0.0.0.0/0` (dev L209-214) | the rule key is `alb_to_app`, but the source is any address, not the ALB security group. Tasks are in private subnets, so anything routable inside the VPC (and the shared-services network `172.30.0.0/16` reached through the transit gateway, batch 2) can reach port 3000 directly, bypassing the ALB and WAF (Inferred; IQ18) |
+| mock-edupass (dev) | TCP 9000 from `172.16.0.0/16`, "from the ALB and Service Connect clients in the Transform VPC" (L135-143) | all (L145-150) | that CIDR is the dev VPC (Verified in batch 2: `acct.lower/network/terragrunt.hcl:16`) |
 | Valkey (cache stack) | 6379 from the TW `main` security group |  | defined in `elasticache/cache`, which depends on this service. The leaf comment at L162-163 explains why `main` reads the Valkey URL from Secrets Manager instead of depending on the cache stack |
 
 ### 4.3 Service Connect
