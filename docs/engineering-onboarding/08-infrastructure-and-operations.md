@@ -6,6 +6,8 @@ Files in scope (read in full): `Dockerfile`, `.dockerignore`, `compose.yml`, `.g
 
 **Evidence boundary:** this repository ends at a container image in AWS ECR. The GitLab deploy pipeline, environments, load balancer, TLS termination, Valkey hosting, secrets management and monitoring are outside it (Q14). Statements about them are labelled Unknown or Inferred.
 
+The deployment side is now being documented separately from the organisation's infra repo in [`infra/`](infra/README.md) (Phase 0 as of 2026-10-10, provisional). This file still reflects only what the TW repo shows.
+
 ## 1. Deployable artefact
 
 One OCI image, `linux/arm64` only, containing the Go binary and the built host SPA. mock-edupass and Valkey are **not** in it.

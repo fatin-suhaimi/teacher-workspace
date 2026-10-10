@@ -38,6 +38,7 @@ Evidence-backed onboarding docs for Teacher Workspace, built incrementally follo
 | [subsystems/observability.md](subsystems/observability.md) | Request ID, access log, full log catalog, what is missing, debugging guide |
 | [subsystems/host-shell.md](subsystems/host-shell.md) | React host: boot, routes, navigation, catalogue, welcome modal, styling, error handling |
 | [workflows/edupass-sign-in.md](workflows/edupass-sign-in.md) | Edupass OIDC sign-in end to end: PKCE, client auth, validation, failures, claims |
+| [infra/README.md](infra/README.md) | Deployment infrastructure for TW from the org infra repo `dxd-transform-infrastructure` (TW scope only): per-environment footprint, hostnames, provisional deployment map, infra open questions. Phase 0 |
 | [workflows/api-proxy.md](workflows/api-proxy.md) | `/api/` reverse proxy: path mapping, JWT contract for partner backends, failures, ADR-0001 gap |
 
 ## Reading path

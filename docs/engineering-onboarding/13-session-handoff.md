@@ -21,6 +21,10 @@
 4. Local dev needs three processes; two `CONTRIBUTING.md` commands are incomplete (`09-*`, Q41, Q42).
 5. CI may not fail on formatting, and does not typecheck the host or run mock tests (Q40, Q12).
 
+## Infrastructure track
+
+Started fresh 2026-10-10 from `dxd-transform-infrastructure` (TW scope only); Phase 0 done. See `infra/13-infra-session-handoff.md`. Headline: the dev and stg ECS task definitions use env var names (`TW_OIDC_*`, `TW_API_PROXY_*`) that the app at `5ff58a7` does not read (infra IQ2).
+
 ## Questions for maintainers
 
 See the shortlist at the top of `11-open-questions-and-discrepancies.md` (Q21/Q8/Q38, Q26, Q22/Q27, Q29/Q11/Q35, Q1, Q40/Q12, Q41/Q42/Q3, Q4).

@@ -42,7 +42,7 @@ Struck-through items are resolved; the resolution stays for traceability.
 | Q11 | Health/readiness endpoint for the Go server: none in the route table. How does the deploy platform probe it? | `handler.go:93-105` (Verified none); ask platform team |
 | Q12 | PR CI has no host typecheck or standalone host build (the host is compiled only inside the image job, skipped for forks), and mock-edupass tests and typecheck never run in CI. Intentional? | `ci.yml` (Verified); maintainers |
 | Q13 | `Dockerfile` downloads `pnpm-linux-arm64` explicitly, consistent with arm64-only publishing; an amd64 build would fail at that step | `Dockerfile` L17-19 (Verified) |
-| Q14 | Deployment pipeline (GitLab), environments, and runtime infra (load balancer, Valkey hosting, TLS) live outside this repo | Evidence gap: request access or docs |
+| Q14 | Deployment pipeline (GitLab), environments, and runtime infra (load balancer, Valkey hosting, TLS) live outside this repo | Evidence gap: request access or docs. Being investigated from `dxd-transform-infrastructure` in `infra/` (Phase 0, 2026-10-10): dev and stg run the app on ECS; prd currently has only a marketing site |
 | Q15 | Uncommitted local changes in the working copy were not checked (git status not run). Source file timestamps were unchanged across all batches | user can run `git status` |
 | Q16 | **Partly resolved:** both TTLs are sliding idle timeouts, re-applied on every request (`middleware/session.go:25-31, 88-111`). Open: rationale for 3h anonymous vs 30m signed-in | maintainers |
 | Q17 | `parser.go:16` `strings.ReplaceAll(s, "\n", "\n")` is a no-op; probably meant to normalise lone `\r`. Low impact | Code owner; `parser_test.go` |
