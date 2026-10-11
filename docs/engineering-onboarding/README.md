@@ -33,6 +33,7 @@ Evidence-backed onboarding docs for Teacher Workspace, built incrementally follo
 | [11-open-questions-and-discrepancies.md](11-open-questions-and-discrepancies.md) | Maintainer shortlist, doc/code conflicts, open questions Q1-Q44 |
 | [12-change-impact-guide.md](12-change-impact-guide.md) | 14 change recipes: files, tests, docs, partner impact, release impact |
 | [13-session-handoff.md](13-session-handoff.md) | Resume checkpoint for future sessions |
+| [14-hands-on-learning-tracker.md](14-hands-on-learning-tracker.md) | Hands-on learning: subsystem familiarity matrix with doc references, roadmap, exercises E1-E15 and issue-based G1-G12, open-issue status vs code, progress log |
 | [subsystems/sessions.md](subsystems/sessions.md) | Session model, middleware lifecycle, TTLs, cookie, CSRF, stores, risks |
 | [subsystems/page-render.md](subsystems/page-render.md) | Dev vs prod page rendering, preloaded state contract, static serving, response helpers |
 | [subsystems/observability.md](subsystems/observability.md) | Request ID, access log, full log catalog, what is missing, debugging guide |

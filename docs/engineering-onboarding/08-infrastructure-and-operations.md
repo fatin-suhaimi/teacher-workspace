@@ -57,8 +57,9 @@ flowchart LR
     L --> IMG
     GL --> IMG
     GT --> IMG
-    IMG{"head repo == this repo?"} -- yes --> B["Build and push image (ubuntu-24.04-arm)<br/>OIDC to AWS, ECR login, buildx, GHA cache<br/>tags pr-N-sha and pr-N-latest"]
-    IMG -- "no (fork)" --> SKIP["job skipped"]
+    IMG{"head repo is this repo?"}
+    IMG -->|yes| B["Build and push image on ubuntu-24.04-arm<br/>OIDC to AWS, ECR login, buildx, GHA cache<br/>tags pr-N-sha and pr-N-latest"]
+    IMG -->|no, fork| SKIP["job skipped"]
 ```
 
 | Fact | Status | Evidence |
@@ -78,16 +79,16 @@ Release-PR model from ADR-0002: a `release/vX.Y.Z` branch bumps root `package.js
 
 ```mermaid
 flowchart TD
-    M["push to main"] --> T{"head commit starts with 'release: v'?"}
-    T -- no --> X["workflow does nothing"]
-    T -- yes --> V["validate title regex 'release: vX.Y.Z (#N)'<br/>version == package.json version<br/>git tag absent"]
-    V -- fail --> E["job fails, nothing published"]
-    V -- ok --> A["OIDC to AWS, ECR login"]
+    M["push to main"] --> T{"head commit starts with release: v ?"}
+    T -->|no| X["workflow does nothing"]
+    T -->|yes| V["validate title format release: vX.Y.Z and PR number<br/>version equals package.json version<br/>git tag absent"]
+    V -->|fail| E["job fails, nothing published"]
+    V -->|ok| A["OIDC to AWS, ECR login"]
     A --> C{"image tag vX.Y.Z already in ECR?"}
-    C -- yes --> TAG
-    C -- no --> B["build and push linux/arm64 image as vX.Y.Z"]
-    B --> TAG["annotated git tag vX.Y.Z, pushed by github-actions bot"]
-    TAG -. "manual image_tag input" .-> GL["GitLab pipeline in the infra repo: stg only today"]
+    C -->|yes| TAG["annotated git tag vX.Y.Z, pushed by github-actions bot"]
+    C -->|no| B["build and push linux/arm64 image as vX.Y.Z"]
+    B --> TAG
+    TAG -.->|manual image_tag input| GL["GitLab pipeline in the infra repo, stg only today"]
 ```
 
 | Fact | Status | Evidence |
@@ -107,14 +108,14 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    U(["Teachers' browsers"]) --> DNS["Route53 edutech.works"]
-    U --> ALB["Per-app ALB, internet-facing<br/>TLS *.edutech.works, HTTP to HTTPS"]
-    ALB -. "inspect" .-> WAF["Shared env WAF"]
-    ALB -- "HTTP :3000, health GET /" --> TW["ECS Fargate: 1 TW task<br/>0.25 vCPU, 512 MB, ARM64"]
-    TW -- "TLS :6379, RBAC user" --> VK[("ElastiCache Valkey 9.1<br/>1 node, no replica")]
-    TW -- "NAT + domain-allowlist firewall" --> EP["Edupass (dev: mock-edupass via its public hostname)"]
-    TW -. "PrivateLink (dev, prd), not wired yet" .-> PG["Parents Gateway"]
-    U -. "manifest, not wired yet" .-> MFE["svc.tw-pg CloudFront (dev)"]
+    U(["Teacher browsers"]) --> DNS["Route53 edutech.works"]
+    U --> ALB["Per-app ALB, internet-facing<br/>TLS for edutech.works, HTTP redirects to HTTPS"]
+    ALB -.->|inspect| WAF["Shared env WAF"]
+    ALB -->|HTTP 3000, health check GET /| TW["ECS Fargate, 1 TW task<br/>0.25 vCPU, 512 MB, ARM64"]
+    TW -->|TLS 6379, RBAC user| VK[("ElastiCache Valkey 9.1<br/>1 node, no replica")]
+    TW -->|NAT and domain-allowlist firewall| EP["Edupass, in dev mock-edupass via its public hostname"]
+    TW -.->|PrivateLink in dev and prd, not wired yet| PG["Parents Gateway"]
+    U -.->|manifest, not wired yet| MFE["svc.tw-pg CloudFront, dev"]
 ```
 
 | Fact | Status | Evidence |
