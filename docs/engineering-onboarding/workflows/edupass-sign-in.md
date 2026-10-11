@@ -82,13 +82,13 @@ flowchart TD
     A["GET /auth/edupass/callback"] --> B{"session in context?"}
     B -- no --> X500["500 plain"]
     B -- yes --> C["GetAndDelete return_to, state, nonce, verifier"]
-    C --> D{"all three pending values present?"}
+    C --> D{"all three pending values present?<br/>edupass_state, edupass_nonce, edupass_code_verifier"}
     D -- no --> F["302 /login?error=oauth2_callback_failed&return_to=..."]
     D -- yes --> E{"query state == stored state?"}
     E -- no --> F
     E -- yes --> G{"query has error param?"}
     G -- "yes (WARN if access_denied, else ERROR)" --> F
-    G -- no --> H["token exchange (10s timeout)"]
+    G -- no --> H["token exchange with code_verifier (10s timeout)<br/>Edupass checks it against the S256 challenge"]
     H -- "error (400/401 logs Edupass error fields)" --> F
     H -- ok --> I{"id_token present?"}
     I -- no --> F
