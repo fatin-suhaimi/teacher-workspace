@@ -132,6 +132,7 @@ Severity = impact x likelihood as assessed here, given a production deployment w
 | R12 | mock-edupass has a hard-coded cookie key and auto-login; harmless locally, dangerous if deployed reachable (ADR-0001 plans to ship it in a developer image). **It is deployed in dev** at `https://dev-mock-edupass.edutech.works`, behind the shared dev WAF (default allow), so anyone who can reach it can sign in to dev TW as a fixture user | `provider.ts:132-136`, `app.ts:15-56`; `infra/02-infra-runtime.md` 3.3, `infra/04` 2.1 | **Low** (dev only, no real data) | Keep it out of production images; refuse to start when `NODE_ENV=production` or bind to localhost by default | Q1 |
 | R13 | Key and certificate expiry only checked at startup; rotation needs a restart | `config.go:408-410` | **Low** (availability) | Monitor cert expiry; document rotation by redeploy | Q19, infra IQ30 |
 | R14 | Panics bypass JSON logging and request IDs, which hampers incident detection | `main.go:105-116` | **Low** | Recovery middleware inside `RequestLog`; set `http.Server.ErrorLog` to a slog adapter | Q34 |
+| R19 | The callback ignores the authorization-response `iss` parameter (RFC 9207 mix-up protection). mock-edupass sends it (observed 2026-10-12: `/auth/edupass/callback?code=…&state=…&iss=http%3A%2F%2Flocalhost%3A9000`); whether Entra-backed Edupass sends it is Unknown. The ID token's own `iss` is still verified by `Verify` | `auth.go:121-127` | **Low** (single provider today) | In `authEdupassCallback`, if `iss` is present, require `iss == TW_EDUPASS_ISSUER_URL` (`cfg.Edupass.IssuerURL`) and fail the login otherwise; skip the check when absent. Read it from the form body once the callback supports `form_post` (Q45) | Q46 |
 
 ### 6.1 Deployment-side risks (from the infra track)
 
@@ -150,7 +151,7 @@ These come from the organisation's infra repo at `b345a06` (`infra/` docs). They
 2. R3: role parsing at sign-in, using the existing mock fixtures as test cases.
 3. R5: logout and absolute lifetime.
 4. R4: security headers (coordinate with the platform team in case the edge already sets them).
-5. R6, R7, R10, R14: hardening and hygiene.
+5. R6, R7, R10, R14, R19: hardening and hygiene.
 6. R15 to R18: deployment-side items, coordinated with the platform team (`infra/11-infra-open-questions.md`).
 
 Each of R1 to R3 changes the contract with partner teams (ADR-0002 treats the proxy interface as the major-version boundary), so they warrant an ADR and a version bump plan.
