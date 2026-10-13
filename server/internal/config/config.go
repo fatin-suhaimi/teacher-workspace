@@ -65,6 +65,7 @@ func Default() Config {
 			},
 		},
 		Edupass: EdupassConfig{
+			AppCode:          EdupassAppCodeTW,
 			ClientAuthMethod: OAuth2ClientAuthMethodClientSecretPost,
 		},
 		RemoteApps: RemoteAppsConfig{
@@ -233,6 +234,18 @@ const (
 	OAuth2ClientAuthMethodPrivateKeyJWT    OAuth2ClientAuthMethod = "private_key_jwt"
 )
 
+// EdupassAppCode is Teacher Workspace's Edupass app code: the <app_code> in
+// each App Role ID Edupass issues it, named
+// `<location_code>_<app_code>_<role_code>`, such as "TW" in
+// `1234_TW_ROLE_TEACHER`. Production Edupass issues [EdupassAppCodeTW], and
+// pre-prod Edupass [EdupassAppCodeTWSTG].
+type EdupassAppCode string
+
+const (
+	EdupassAppCodeTW    EdupassAppCode = "TW"
+	EdupassAppCodeTWSTG EdupassAppCode = "TWSTG"
+)
+
 type EdupassClientCredentials struct {
 	Secret                string
 	Key                   *rsa.PrivateKey
@@ -248,6 +261,8 @@ type EdupassConfig struct {
 
 	ClientID    string   `dotenv:"TW_EDUPASS_CLIENT_ID"`
 	RedirectURL *url.URL `dotenv:"TW_EDUPASS_REDIRECT_URL"`
+
+	AppCode EdupassAppCode `dotenv:"TW_EDUPASS_APP_CODE"`
 
 	ClientAuthMethod      OAuth2ClientAuthMethod `dotenv:"TW_EDUPASS_CLIENT_AUTH_METHOD"`
 	ClientSecret          string                 `dotenv:"TW_EDUPASS_CLIENT_SECRET"`
@@ -316,6 +331,11 @@ func (cfg *EdupassConfig) validate() error {
 		if cfg.RedirectURL.Host == "" {
 			errs = append(errs, fmt.Errorf("TW_EDUPASS_REDIRECT_URL must include host[:port]; got %q", cfg.RedirectURL))
 		}
+	}
+
+	if cfg.AppCode != EdupassAppCodeTW && cfg.AppCode != EdupassAppCodeTWSTG {
+		errs = append(errs, fmt.Errorf("TW_EDUPASS_APP_CODE must be %q or %q; got %q",
+			EdupassAppCodeTW, EdupassAppCodeTWSTG, cfg.AppCode))
 	}
 
 	switch cfg.ClientAuthMethod {

@@ -73,8 +73,9 @@ type edupassTokenErrorExtensions struct {
 // authEdupassCallback completes the pending login started by
 // [Handler.authEdupass]. Edupass redirects the user here after they log in.
 //
-// On success, it logs the user in to the session with the identity from their
-// Edupass ID token, and redirects them to the path they asked to return to.
+// On success, it logs the user in to the session with the identity, base role
+// and attributes from their Edupass ID token, and redirects them to the path
+// they asked to return to.
 //
 // On failure, it redirects the user to the login page, which reports the
 // failure and keeps the path they asked to return to. It fails if:
@@ -82,6 +83,7 @@ type edupassTokenErrorExtensions struct {
 //   - the callback does not belong to the pending login
 //   - Edupass reports an error
 //   - Edupass does not issue a valid ID token with the claims the session needs
+//   - the ID token's groups claim does not hold exactly one recognized base role
 //
 // Either way, it clears the pending login from the session, so a repeated
 // callback fails because there is no pending login.
@@ -233,7 +235,9 @@ func (h *Handler) authEdupassCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var claims struct {
-		Email string `json:"email"`
+		ID     string   `json:"id"`
+		Email  string   `json:"email"`
+		Groups []string `json:"groups"`
 	}
 	if err := idToken.Claims(&claims); err != nil {
 		logger.Error("failed to unmarshal claims", "provider", "edupass", "err", err)
@@ -246,9 +250,31 @@ func (h *Handler) authEdupassCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sess.SetUser(session.User{Email: claims.Email})
+	resolved := resolveEdupassGroups(claims.Groups, h.cfg.Edupass.AppCode)
+	if len(resolved.unrecognized) > 0 {
+		logger.Warn(
+			"discarded unrecognized Edupass role/attribute codes",
+			"edupass_id", claims.ID,
+			"codes", resolved.unrecognized,
+		)
+	}
+	if len(resolved.roles) != 1 {
+		logger.Warn(
+			"staff does not have exactly one recognized base role",
+			"edupass_id", claims.ID,
+			"roles", resolved.roles,
+		)
+		httputil.Redirect(w, logger, http.StatusFound, loginFailedURL(returnTo))
+		return
+	}
 
-	logger.Info("logged in", "provider", "edupass")
+	sess.SetUser(session.User{
+		Email:      claims.Email,
+		Role:       resolved.roles[0],
+		Attributes: resolved.attributes,
+	})
+
+	logger.Info("logged in")
 	httputil.Redirect(w, logger, http.StatusFound, returnTo)
 }
 
@@ -291,4 +317,154 @@ func loginFailedURL(returnTo string) string {
 	q.Set("error", "oauth2_callback_failed")
 	q.Set("return_to", returnTo)
 	return "/login?" + q.Encode()
+}
+
+const (
+	edupassRoleInfix = "_ROLE_"
+	edupassAttrInfix = "_ATTR_"
+)
+
+// isRecognizedEdupassRole reports whether code is a base role Edupass
+// issues. A staff member is meant to hold exactly one for a location, but
+// Edupass enforces nothing: resolveEdupassGroups reports every one it sees
+// and leaves the "more than one" case to the caller, rather than guessing
+// which was meant. Add new codes here as they're recognized.
+func isRecognizedEdupassRole(code string) bool {
+	switch code {
+	case "ROLE_PRINCIPAL",
+		"ROLE_VICE_PRINCIPAL",
+		"ROLE_VICE_PRINCIPAL_ADMINISTRATION",
+		"ROLE_ADMIN_MANAGER",
+		"ROLE_ADMIN_SUPPORT",
+		"ROLE_YEAR_HEAD",
+		"ROLE_ASST_YEAR_HEAD",
+		"ROLE_HOD",
+		"ROLE_SUBJECT_HEAD",
+		"ROLE_LEVEL_HEAD",
+		"ROLE_SSD",
+		"ROLE_LEAD_TEACHER",
+		"ROLE_SNR_TEACHER",
+		"ROLE_TEACHER",
+		"ROLE_SNR_COUNSELLOR",
+		"ROLE_COUNSELLOR",
+		"ROLE_SNR_SEN_OFFICER",
+		"ROLE_SEN_OFFICER",
+		"ROLE_SNR_SWO",
+		"ROLE_SWO",
+		"ROLE_AED_TL",
+		"ROLE_ICT_MANAGER":
+		return true
+	default:
+		return false
+	}
+}
+
+// isRecognizedEdupassAttribute reports whether code is an attribute Edupass
+// issues. Add new codes here as they're recognized.
+func isRecognizedEdupassAttribute(code string) bool {
+	switch code {
+	case "ATTR_PG_ADMIN",
+		"ATTR_PG_USER",
+		"ATTR_CCE",
+		"ATTR_DM",
+		"ATTR_SDE",
+		"ATTR_ECGC",
+		"ATTR_WB_SPECIALIST",
+		"ATTR_WB_TCI",
+		"ATTR_SLD":
+		return true
+	default:
+		return false
+	}
+}
+
+// edupassGroups is the outcome of resolving one staff member's Edupass
+// `groups` claim.
+type edupassGroups struct {
+	// roles contains every recognized base role, stripped of its location
+	// code and app code, in arrival order. More than one entry means
+	// Edupass returned conflicting base roles, whether for one location or
+	// spread across several.
+	roles []string
+	// attributes contains every recognized attribute, stripped of its
+	// location code and app code, unranked and in arrival order.
+	attributes []string
+	// unrecognized contains every raw entry that didn't split into a
+	// recognized base role or attribute, verbatim, for logging.
+	unrecognized []string
+}
+
+// resolveEdupassGroups splits raw (an Edupass `groups` claim) into recognized
+// base roles and attributes, stripping the location code and app code from
+// each. Every slice in the result is non-nil, even when empty.
+//
+// Each entry is an Edupass app role, named
+// `<location_code>_<app_code>_<tw_role_code>`. app_code is Teacher Workspace's
+// app code for the Edupass environment (TW in production, TWSTG in pre-prod),
+// passed in as appCode. Teacher Workspace registers both its base roles and
+// its attributes as app roles, so tw_role_code is `<ROLE|ATTR>_<role_code>`:
+// `1234_TW_ROLE_TEACHER` is the base role ROLE_TEACHER and `1234_TW_ATTR_CCE`
+// the attribute ATTR_CCE, both at location 1234. resolveEdupassGroups requires
+// an entry's app_code to be appCode, rejecting a lookalike entry meant for a
+// different application or Edupass environment; the location code is never
+// checked.
+//
+// A code absent from both reference lists, or in an entry whose app_code is
+// not appCode, is reported in unrecognized rather than blocking resolution:
+// Edupass can add codes between Teacher Workspace releases.
+// resolveEdupassGroups doesn't decide whether sign-in proceeds; the caller
+// refuses unless roles holds exactly one entry.
+func resolveEdupassGroups(raw []string, appCode config.EdupassAppCode) edupassGroups {
+	roles := []string{}
+	attributes := []string{}
+	unrecognized := []string{}
+
+	for _, entry := range raw {
+		switch {
+		case strings.Contains(entry, edupassRoleInfix):
+			code := codeAfterInfix(entry, edupassRoleInfix)
+			if !hasEdupassAppCode(entry, edupassRoleInfix, appCode) {
+				unrecognized = append(unrecognized, entry)
+			} else if isRecognizedEdupassRole(code) {
+				roles = append(roles, code)
+			} else {
+				unrecognized = append(unrecognized, entry)
+			}
+		case strings.Contains(entry, edupassAttrInfix):
+			code := codeAfterInfix(entry, edupassAttrInfix)
+			if !hasEdupassAppCode(entry, edupassAttrInfix, appCode) {
+				unrecognized = append(unrecognized, entry)
+			} else if isRecognizedEdupassAttribute(code) {
+				attributes = append(attributes, code)
+			} else {
+				unrecognized = append(unrecognized, entry)
+			}
+		default:
+			unrecognized = append(unrecognized, entry)
+		}
+	}
+
+	return edupassGroups{
+		roles:        roles,
+		attributes:   attributes,
+		unrecognized: unrecognized,
+	}
+}
+
+// codeAfterInfix returns entry with everything ahead of infix removed, the
+// infix's own leading underscore dropped, and the rest (its ROLE_/ATTR_
+// prefix included) kept as the code.
+func codeAfterInfix(entry, infix string) string {
+	idx := strings.Index(entry, infix)
+	return entry[idx+1:]
+}
+
+// hasEdupassAppCode reports whether entry's app code, the underscore-separated
+// part just ahead of infix, is appCode. It rejects a lookalike entry meant for
+// a different application or Edupass environment that happens to share the
+// ROLE_/ATTR_ infix shape, without caring what the location code ahead of the
+// app code says.
+func hasEdupassAppCode(entry, infix string, appCode config.EdupassAppCode) bool {
+	prefix := entry[:strings.Index(entry, infix)]
+	return strings.HasSuffix(prefix, "_"+string(appCode))
 }

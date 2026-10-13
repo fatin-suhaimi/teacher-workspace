@@ -57,7 +57,9 @@ type snapshot struct {
 
 // User is the authenticated principal of a Session.
 type User struct {
-	Email string `json:"email"`
+	Email      string   `json:"email"`
+	Role       string   `json:"role"`
+	Attributes []string `json:"attributes"`
 }
 
 // New returns a new unauthenticated Session.
