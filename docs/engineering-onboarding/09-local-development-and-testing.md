@@ -96,7 +96,7 @@ Then `GET session:<id>` shows the JSON snapshot, `TTL session:<id>` shows the re
 
 | Suite | Command | Notes |
 | --- | --- | --- |
-| Go, as CI runs it | `go test -race ./...` | Valkey store tests start a container via testcontainers: Docker must be running |
+| Go, as CI runs it | `go test -race ./...` | Valkey store tests start a container via testcontainers: Docker must be running and reachable by testcontainers (Colima needs extra config, see §7) |
 | Go, one package / one test | `go test ./server/internal/config`, `go test -run TestName ./server/...` |  |
 | mock-edupass | `pnpm --filter @teacher-workspace/mock-edupass test` | `node --test`; not run in CI (Q12) |
 | mock-edupass typecheck | `pnpm --filter @teacher-workspace/mock-edupass typecheck` | not run in CI |
@@ -141,3 +141,36 @@ Run `mise run fmt` before committing Go, since no hook does it.
 | `/posts` shows "This section didn't load" | Posts remote not registered (all three `TW_REMOTE_POSTS_*` needed) or a dev/prod build mismatch | `App.tsx:45-67`, `CONTRIBUTING.md` |
 | Production run exits on startup | `apps/host/dist` missing: run `pnpm build` | `config.go:97-102`, `handler.go:71-76` |
 | `mise install` fails with 403/429 | GitHub rate limit on tool downloads | `CONTRIBUTING.md` |
+| Valkey store tests fail with `get provider: rootless Docker not found, failed to create Docker provider` | Docker runs under Colima; testcontainers does not follow `docker context use colima` and finds no socket at `/var/run/docker.sock` | observed locally; fix in "Testcontainers with Colima" below |
+| `ld: warning: ignoring duplicate libraries: '-lglide_ffi', '-lm'` when building tests on macOS | linker noise from valkey-glide's prebuilt FFI library; harmless | `CONTRIBUTING.md` (valkey-glide is cgo-based) |
+
+### Testcontainers with Colima
+
+The `docker` CLI uses the Colima context, but testcontainers looks for `DOCKER_HOST`, then `~/.testcontainers.properties`, then `/var/run/docker.sock`. With Colima none of these point anywhere, so `go test -race ./...` fails in `server/internal/session/valkeystore` while `docker ps` works fine.
+
+Create `~/.testcontainers.properties` (replace `<your-username>`):
+
+```properties
+docker.host=unix:///Users/<your-username>/.colima/default/docker.sock
+ryuk.container.privileged=true
+```
+
+Add to `~/.zshrc`, so the Ryuk reaper container mounts the socket path as it exists inside the Colima VM:
+
+```sh
+export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
+```
+
+Verify:
+
+```sh
+source ~/.zshrc
+ls -l ~/.colima/default/docker.sock   # exists while Colima is running
+go test -race -count=1 ./server/internal/session/valkeystore
+```
+
+If it still fails:
+
+- Socket missing: run `colima start` (`colima status` to check).
+- Image pulls fail with x509/TLS errors while Cloudflare WARP is on: install the Cloudflare CA in `~/.docker/certs.d` and inside the Colima VM (GTO onboarding guide, "Set Up Docker with Colima"), then `colima restart`.
+- Last resort: `export TESTCONTAINERS_RYUK_DISABLED=true` skips the reaper; containers from crashed runs then need manual cleanup (`docker ps`, `docker rm -f <id>`).
