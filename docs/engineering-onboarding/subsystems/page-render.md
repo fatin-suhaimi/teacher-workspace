@@ -1,6 +1,6 @@
 # Subsystem: Page Render, Static Assets and Response Helpers
 
-Revision: `main` @ `5ff58a7`. Batch 4 (2026-10-09).
+Revision: `main` @ `5ff58a7`. Synced to `abe5457` on 2026-10-16 (see `documentation-sync-state.json`). Batch 4 (2026-10-09).
 
 Files in scope (read in full): `server/internal/handler/index.go`, `server/internal/htmlutil/template.go`, `server/internal/httputil/httputil.go`, `server/internal/httputil/error.go`, `apps/host/src/containers/RootLayout.tsx`, `apps/host/src/containers/RemoteLoadFallbackView.tsx`. Tests: case names of `index_test.go`, `template_test.go`, `httputil_test.go` reviewed; one `index_test.go` body read.
 
@@ -101,7 +101,7 @@ Remote names are a cross-repo contract: the server's `pg` and `si` must match th
 | `RenderHTML(w, logger, status, body)` | `text/html; charset=UTF-8`, `nosniff` | `httputil.go:42-54` |
 | `RenderJSON(w, logger, status, v)` | marshal first; on failure a 500 plain; else `application/json; charset=UTF-8`, `nosniff` | `httputil.go:56-77` |
 | `Redirect(w, logger, status, url)` | only 301/302/303/307/308, else logs and 500; `Location` sent exactly as given (not resolved) | `httputil.go:79-97` |
-| `ErrorResponse{Message}` | JSON error body shape `{"message": "..."}`, used by the proxy's 404/500 | `error.go`, `proxy.go:54-56, 70-72` |
+| `ErrorResponse{Message}` | JSON error body shape `{"message": "..."}`, used by the proxy's 404/500 | `error.go`, `proxy.go:54-56, 111-113` |
 
 Write errors are logged, never returned. All helpers are covered by `httputil_test.go`.
 

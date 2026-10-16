@@ -1,6 +1,6 @@
 # 02 Architecture: Startup, Configuration and Request Pipeline
 
-Revision: `main` @ `5ff58a7` (reviewed on branch `docs/engineering-onboarding`, which adds only these docs). Phase 1, batch 1.
+Revision: `main` @ `5ff58a7` (reviewed on branch `docs/engineering-onboarding`, which adds only these docs). Phase 1, batch 1. Synced to `abe5457` on 2026-10-16 (see `documentation-sync-state.json`).
 
 Scope of this batch: process startup and shutdown (`server/cmd/tw/main.go`), configuration (`server/internal/config/config.go`, `server/pkg/dotenv/*`) and middleware composition (`server/internal/middleware/middleware.go`). Session, auth, index and proxy internals are out of scope here and covered in later batches.
 
@@ -32,7 +32,7 @@ flowchart TB
 | Edge | Status | Evidence |
 | --- | --- | --- |
 | `main` imports config, handler, middleware, session, memstore, valkeystore, dotenv | Verified | `main.go:15-21` |
-| `handler` imports config, htmlutil, httputil, middleware | Verified | `handler.go:15-18` |
+| `handler` imports config, htmlutil, httputil, middleware | Verified | `handler.go:16-19` |
 | `middleware` depends on `session` (and `httputil`) | Verified | `middleware/session.go:14-15` |
 | `dotenv` is generic (decodes into any struct via `dotenv` tags); `config` does not import it | Verified | `dotenv.go:16-29`, `config.go:3-17` |
 
@@ -68,9 +68,9 @@ flowchart LR
 | Edge | Status | Evidence |
 | --- | --- | --- |
 | Dev proxy vs prod static, chosen by `TW_ENV` | Verified | `handler.go:66-85` |
-| Valkey only when provider is `valkey`; no fallback | Verified | `main.go:57-89`, `config.go:188-195` |
-| Exactly two remotes, Posts and Student Insights, each with manifest URL, backend base URL and signing key | Verified | `config.go:429-441` |
-| Signing keys are sized for HS256 (at least 32 bytes) and used to sign per-request JWTs | Verified | `config.go:480-483, 517-520`, `proxy.go:60-67` |
+| Valkey only when provider is `valkey`; no fallback | Verified | `main.go:57-89`, `config.go:189-196` |
+| Exactly two remotes, Posts and Student Insights, each with manifest URL, backend base URL and signing key | Verified | `config.go:449-461` |
+| Signing keys are sized for HS256 (at least 32 bytes) and used to sign per-request JWTs | Verified | `config.go:500-503, 537-540`, `proxy.go:88-108` |
 | Browser redirected to Edupass authorize endpoint | Verified | `auth.go:57-63` |
 | Browser loads remote entries directly from manifest URLs | Verified (TW side); the fetch itself is MF runtime behaviour | `index.go:25-32`, `bootstrap.tsx:11` |
 
@@ -123,11 +123,11 @@ sequenceDiagram
 
 Walkthrough and notes:
 
-- **Fail fast, report everything.** `Validate` collects every invalid field across all sections into one `errors.Join` error, so a misconfigured deploy shows all problems at once (`config.go:78-112`; test "reports multiple invalid fields in one error", `config_test.go:292`). The default config alone is invalid because Edupass has no defaults (`config_test.go:264` "rejects the default config").
-- **`Validate` has side effects.** For `client_secret_post` it reads `TW_EDUPASS_CLIENT_SECRET_FILE` (trailing CR/LF trimmed); for `private_key_jwt` it reads the key and certificate, requires PKCS#8 RSA of at least 2048 bits, rejects an expired certificate, checks the certificate matches the key, and stores the key plus the base64url SHA-256 certificate thumbprint in `cfg.Edupass.ClientCredentials` (`config.go:321-420`). Nothing else populates `ClientCredentials` (it has tag `dotenv:"-"`, `config.go:260`).
+- **Fail fast, report everything.** `Validate` collects every invalid field across all sections into one `errors.Join` error, so a misconfigured deploy shows all problems at once (`config.go:79-113`; test "reports multiple invalid fields in one error", `config_test.go:298`). The default config alone is invalid because Edupass has no defaults (`config_test.go:270` "rejects the default config").
+- **`Validate` has side effects.** For `client_secret_post` it reads `TW_EDUPASS_CLIENT_SECRET_FILE` (trailing CR/LF trimmed); for `private_key_jwt` it reads the key and certificate, requires PKCS#8 RSA of at least 2048 bits, rejects an expired certificate, checks the certificate matches the key, and stores the key plus the base64url SHA-256 certificate thumbprint in `cfg.Edupass.ClientCredentials` (`config.go:341-440`). Nothing else populates `ClientCredentials` (it has tag `dotenv:"-"`, `config.go:275`).
 - **Log level is applied late.** Logs before step 12 (config errors) are always at INFO and above (`main.go:29-54`).
 - **Valkey must be reachable at startup.** Any `glide.NewClient` error exits the process (`main.go:76-80`). CONTRIBUTING states this is deliberate: no silent fallback to memory.
-- **Production needs the built SPA at startup.** `Validate` checks `TW_BUILD_DIR` exists, then `handler.New` parses `index.html` once and opens the directory with `os.OpenRoot`, which confines file serving to that directory (`config.go:97-102`, `handler.go:71-82`).
+- **Production needs the built SPA at startup.** `Validate` checks `TW_BUILD_DIR` exists, then `handler.New` parses `index.html` once and opens the directory with `os.OpenRoot`, which confines file serving to that directory (`config.go:98-103`, `handler.go:71-82`).
 - **Edupass is not contacted at startup.** `handler.New` only constructs clients; `oidc.NewRemoteKeySet` fetches keys lazily (Inferred from go-oidc library behaviour, not from repo code).
 - **Exit paths skip cleanup.** Every `os.Exit(1)` (including a `ListenAndServe` failure inside the goroutine, `main.go:123-126`) bypasses the deferred `client.Close()`.
 
@@ -160,10 +160,10 @@ flowchart TD
 
 | Rule | Status | Evidence |
 | --- | --- | --- |
-| `.env` is resolved against the **current working directory**, so run the binary from the repo root (relative defaults like `TW_BUILD_DIR=apps/host/dist` and `*_FILE` paths are CWD-relative too) | Verified | `dotenv.go:16-32`, `config.go:48`, `config.go:335,367,394` |
+| `.env` is resolved against the **current working directory**, so run the binary from the repo root (relative defaults like `TW_BUILD_DIR=apps/host/dist` and `*_FILE` paths are CWD-relative too) | Verified | `dotenv.go:16-32`, `config.go:48`, `config.go:355,387,414` |
 | Real environment variables override `.env` values; `.env` values are exported into the process environment | Verified | `dotenv.go:44-52`; test "single field overridden by process env" (`dotenv_test.go:252`) |
-| Only keys with a matching `dotenv` tag are used; nested sections are flattened with `,squash` | Verified | `config.go:34-37,160` |
-| **A variable that is set but empty still overrides the default.** E.g. `TW_SESSION_NAME=` yields `""` and fails validation; `TW_REMOTE_POSTS_MANIFEST_URL=` decodes to a non-nil empty URL, which counts as "partially registered" and fails | Verified for URLs (`dotenv_test.go:162` "empty string"; `config.go:450`); strings by mapstructure semantics (Inferred) |  |
+| Only keys with a matching `dotenv` tag are used; nested sections are flattened with `,squash` | Verified | `config.go:34-37,161` |
+| **A variable that is set but empty still overrides the default.** E.g. `TW_SESSION_NAME=` yields `""` and fails validation; `TW_REMOTE_POSTS_MANIFEST_URL=` decodes to a non-nil empty URL, which counts as "partially registered" and fails | Verified for URLs (`dotenv_test.go:162` "empty string"; `config.go:470`); strings by mapstructure semantics (Inferred) |  |
 | Durations without a unit (e.g. `30`) are rejected | Verified | `dotenv_test.go:121` |
 | Unquoted values cannot contain `#` (treated as a comment); use quotes | Verified | `parser.go:8` regex |
 
@@ -171,7 +171,7 @@ Minor code note: `parser.go:16` replaces `"\n"` with `"\n"` (a no-op). It looks 
 
 ## 6. Configuration reference
 
-All variables are read by `config.Config` (`config.go:27-441`). "Required" means `Validate` fails without it.
+All variables are read by `config.Config` (`config.go:27-461`). "Required" means `Validate` fails without it.
 
 ### Application
 
@@ -197,11 +197,11 @@ All variables are read by `config.Config` (`config.go:27-441`). "Required" means
 | Variable | Default | Rules |
 | --- | --- | --- |
 | `TW_SESSION_NAME` | `tw_session` | valid RFC 6265 cookie name |
-| `TW_SESSION_DEFAULT_TTL` | `3h` | >= 1s (sub-second would ship `Max-Age=0`, `config.go:179-180`) |
+| `TW_SESSION_DEFAULT_TTL` | `3h` | >= 1s (sub-second would ship `Max-Age=0`, `config.go:180-181`) |
 | `TW_SESSION_AUTHENTICATED_TTL` | `30m` | >= 1s |
 | `TW_SESSION_SECURE` | `true` | bool; set `false` for plain-HTTP local dev |
 | `TW_SESSION_STORE_PROVIDER` | `memory` | `memory` or `valkey` |
-| `TW_SESSION_VALKEY_URL` | none | required for valkey: `valkey://[user:pass@]host:port[?tls=true or false]`; credentials are redacted in errors (`config_test.go:632`) |
+| `TW_SESSION_VALKEY_URL` | none | required for valkey: `valkey://[user:pass@]host:port[?tls=true or false]`; credentials are redacted in errors (`config_test.go:638`) |
 | `TW_SESSION_VALKEY_PREFIX` | `session:` | required (non-empty) for valkey |
 
 ### Edupass (all required unless noted)
@@ -210,6 +210,7 @@ All variables are read by `config.Config` (`config.go:27-441`). "Required" means
 | --- | --- |
 | `TW_EDUPASS_ISSUER_URL`, `_AUTH_URL`, `_TOKEN_URL`, `_JWKS_URL`, `_REDIRECT_URL` | http/https with host |
 | `TW_EDUPASS_CLIENT_ID` | non-empty |
+| `TW_EDUPASS_APP_CODE` | optional; default `TW` (production Edupass and mock-edupass); `TWSTG` for pre-prod Edupass; any other value fails validation (`config.go:242-247, 336-339`, since #199). Group entries with another app code are discarded at sign-in |
 | `TW_EDUPASS_CLIENT_AUTH_METHOD` | default `client_secret_post`; or `private_key_jwt` |
 | `TW_EDUPASS_CLIENT_SECRET` or `_SECRET_FILE` | exactly one, for `client_secret_post` |
 | `TW_EDUPASS_CLIENT_PRIVATE_KEY` or `_PRIVATE_KEY_FILE` | exactly one, for `private_key_jwt`: PEM PKCS#8 RSA, >= 2048 bits |
@@ -223,7 +224,7 @@ All variables are read by `config.Config` (`config.go:27-441`). "Required" means
 | `TW_REMOTE_POSTS_MANIFEST_URL`, `_BACKEND_BASE_URL`, `_BACKEND_SIGNING_KEY` | unset (remote not registered) | all three or none; URLs http/https with host; base URL may have a path but no query or fragment; key >= 32 bytes |
 | `TW_REMOTE_STUDENT_INSIGHTS_MANIFEST_URL`, `_BACKEND_BASE_URL`, `_BACKEND_SIGNING_KEY` | unset | same rules |
 
-`IsPostsRegistered()` / `IsStudentInsightsRegistered()` report whether all three are set (`config.go:527-536`); their callers are `index.go:27-31` (remote list) and `proxy.go:28-41` (backend table).
+`IsPostsRegistered()` / `IsStudentInsightsRegistered()` report whether all three are set (`config.go:547-556`); their callers are `index.go:27-31` (remote list) and `proxy.go:28-41` (backend table).
 
 **Deployed values.** The dev and stg ECS task definitions, at infra revision `b345a06`, set these under older names: `TW_OIDC_*` instead of `TW_EDUPASS_*`, `TW_OIDC_JWKS_URI` instead of `TW_EDUPASS_JWKS_URL`, and `TW_API_PROXY_*_SIGNING_KEY` instead of `TW_REMOTE_*_BACKEND_SIGNING_KEY`. Unknown names are ignored, so an image from this revision would fail validation at startup there. The variable-by-variable mapping, and the safe order for fixing it, are in `infra/02-infra-runtime.md` sections 3 and 5 (infra IQ2, IQ3). The required shape of `TW_SESSION_VALKEY_URL` for the deployed cache is in `infra/05-infra-data-and-secrets.md` 2.3.
 
@@ -255,6 +256,6 @@ RequestID runs before RequestLog, so the access-log line carries the request ID 
 
 ## 9. Verification
 
-- Re-read `config.go` validation branches against the listed `config_test.go` cases: defaults, every section's accept/reject tables, file-based secrets, key/cert failure modes and redaction tests exist (`config_test.go:24-1400`). Test bodies were sampled, not all read.
+- Re-read `config.go` validation branches against the listed `config_test.go` cases: defaults, every section's accept/reject tables, file-based secrets, key/cert failure modes and redaction tests exist (`config_test.go:24-1433`). Test bodies were sampled, not all read.
 - Middleware order confirmed by `TestChain`.
 - Mermaid blocks parse-checked with mermaid 11.4.1. Visual layout not reviewed.

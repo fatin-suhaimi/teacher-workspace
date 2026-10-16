@@ -1,6 +1,6 @@
 # Subsystem: Host Shell (React Frontend)
 
-Revision: `main` @ `5ff58a7`. Batch 7 (2026-10-09).
+Revision: `main` @ `5ff58a7`. Synced to `abe5457` on 2026-10-16 (see `documentation-sync-state.json`). Batch 7 (2026-10-09).
 
 Files in scope, read in full:
 
@@ -128,7 +128,7 @@ The catalogue is not personalised, not role-based and not server-driven. Changin
 | Design tokens as CSS variables on `:root` and `.dark` | primary `#0064ff`, neutral greys, sidebar palette; mapped into Tailwind with `@theme inline` | `App.css:7-100` |
 | Global base styles | `*` border and outline colours, `body` font and colours: these apply to remote content too (Inferred: same document) | `App.css:102-111` |
 | shadcn `base-nova` style on Base UI | components in `components/ui`, `cn()` = `twMerge(clsx(...))` | `components.json`, `helpers/cn.ts` |
-| Inter font via `@fontsource/inter` | bundled, not fetched from a CDN | `App.css:1` |
+| Inter font via `@fontsource-variable/inter` (pinned `5.3.0`, #222); Tailwind `--font-sans` is `'Inter Variable'` | bundled, not fetched from a CDN | `App.css:1, 69`, `apps/host/package.json` |
 | Dark mode | tokens exist (`.dark`), but nothing in the read code toggles the class | `App.css:5, 38-66` |
 | Hard-coded hex still present | `#eaf3ff` badge background (sidebar, welcome modal), `#C8C8C8` featured border; CHANGELOG 0.0.2 moved one hex to a token, others remain | `Sidebar.tsx:65`, `WelcomeModal.tsx:60`, `AppCard.tsx:65` |
 
@@ -150,7 +150,7 @@ The catalogue is not personalised, not role-based and not server-driven. Changin
 | Host uses `csrfToken` | **no**: validated in the preloaded state, then unused | `preloaded-state.ts:5, 44`; search |
 | Remotes get the CSRF token or user info from the host | no shared module or prop carries them (only `react`, `react-dom` and `react-router` are shared); a remote could only read the `#preloaded-state` script from the DOM itself | `rsbuild.config.ts:13-26`, `App.tsx:16-32` (no props passed) |
 | Host knows whether the user is signed in | no (Q30) | `preloaded-state.ts:4-7` |
-| Host links to `/login` | never; only the server's sign-in failure redirects there | search, `auth.go:287-294` |
+| Host links to `/login` | never; only the server's sign-in failure redirects there | search, `auth.go:325-332` |
 
 ## 10. Where to change things
 

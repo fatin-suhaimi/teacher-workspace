@@ -1,0 +1,12 @@
+{
+  "source_repository": "transformteamsg/teacher-workspace",
+  "source_remote_url": "https://github.com/transformteamsg/teacher-workspace.git",
+  "source_branch": "main",
+  "last_reviewed_source_commit": "abe54576c604b5879679bf98a7cfd1fd3d0e7e8e",
+  "previous_reviewed_source_commit": "5ff58a78d09a37a6d662794297d7cdf70aeedb91",
+  "last_successful_sync": "2026-10-16T18:20:00+08:00",
+  "documentation_branch": "docs/engineering-onboarding",
+  "documentation_directory": "docs/engineering-onboarding/",
+  "scope_notes": "App docs re-verified at the commit above. The infra/ track still compares against app 5ff58a7 and infra repo b345a06; only cross-cutting notes were added.",
+  "incomplete_work": []
+}

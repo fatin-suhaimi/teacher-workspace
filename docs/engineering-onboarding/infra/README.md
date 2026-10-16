@@ -4,7 +4,7 @@ Evidence-backed onboarding docs for how Teacher Workspace (TW) is deployed, buil
 
 - **Source repo:** `dxd-transform-infrastructure` (local clone `~/dxd-transform-infrastructure`), title "MOE DIVA Infra"
 - **Revision analysed:** `main` @ `b345a0632a34c1e8400bb111262c5f0352763ef1` (from `.git/refs/heads/main`; uncommitted changes not checked)
-- **App revision these docs compare against:** teacher-workspace `main` @ `5ff58a7`
+- **App revision these docs compare against:** teacher-workspace `main` @ `5ff58a7`. App changes up to `abe5457` (2026-10-16 sync) that touch infra: the Go module is now `github.com/transformteamsg/teacher-workspace` (#204; affects IQ10), and a new optional `TW_EDUPASS_APP_CODE` (default `TW`; `TWSTG` for pre-prod Edupass). The infra repo itself was not re-read.
 - **Status:** complete, 2026-10-10: Phase 0 (inventory and plan), Phase 1 batches 1-5 (runtime; edge and network; data and secrets; static sites; delivery) and batch 6 (consolidation into the app docs and audit). The maintainer action list is in `13-infra-session-handoff.md`.
 - **Started fresh on 2026-10-10.** Earlier infra notes from 2026-10-09/10 were discarded at the user's request and not reused.
 

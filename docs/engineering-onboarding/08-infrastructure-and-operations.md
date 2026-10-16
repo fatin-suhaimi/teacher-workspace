@@ -1,6 +1,6 @@
 # 08 Infrastructure, Delivery and Operations
 
-Revision: `main` @ `5ff58a7`. Batch 8 (2026-10-09); deployment facts folded in from the infra track (2026-10-10).
+Revision: `main` @ `5ff58a7`. Synced to `abe5457` on 2026-10-16 (see `documentation-sync-state.json`). Batch 8 (2026-10-09); deployment facts folded in from the infra track (2026-10-10).
 
 Files in scope (read in full): `Dockerfile`, `.dockerignore`, `compose.yml`, `.github/workflows/ci.yml`, `.github/workflows/release.yml`, `.github/PULL_REQUEST_TEMPLATE.md`, `package.json`, `pnpm-workspace.yaml`, `mise.toml`, `lefthook.yml`, `.oxlintrc.json`, `.oxfmtrc.json`, `.golangci.yaml`, `docs/adr/0002-release-strategy.md`, `CHANGELOG.md`.
 
@@ -43,7 +43,7 @@ flowchart LR
 
 **Deployed today:** the dev and stg task definitions use older variable names that this revision ignores (infra IQ2; `infra/02-infra-runtime.md` section 3).
 
-Runtime configuration that the deploy environment must supply (the image sets only `TW_ENV`, `TW_BUILD_DIR`, `TW_SERVER_PORT`): every `TW_EDUPASS_*` value (no defaults), `TW_SESSION_STORE_PROVIDER=valkey` plus `TW_SESSION_VALKEY_URL` for any multi-instance deployment, the `TW_REMOTE_*` triples for each remote, and optionally timeouts, TTLs and log level. Full reference: `02-architecture.md` section 6. Secret values may be passed as `*_FILE` paths (Edupass secret, key, certificate), which suits mounted secrets (`config.go:253-258`).
+Runtime configuration that the deploy environment must supply (the image sets only `TW_ENV`, `TW_BUILD_DIR`, `TW_SERVER_PORT`): every `TW_EDUPASS_*` value (no defaults, except `TW_EDUPASS_APP_CODE`, which defaults to `TW` and must be set to `TWSTG` if an environment signs in against pre-prod Edupass, otherwise every user is refused), `TW_SESSION_STORE_PROVIDER=valkey` plus `TW_SESSION_VALKEY_URL` for any multi-instance deployment, the `TW_REMOTE_*` triples for each remote, and optionally timeouts, TTLs and log level. Full reference: `02-architecture.md` section 6. Secret values may be passed as `*_FILE` paths (Edupass secret, key, certificate), which suits mounted secrets (`config.go:268-273`).
 
 ## 2. CI on pull requests
 

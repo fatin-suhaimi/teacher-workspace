@@ -1,6 +1,6 @@
 # 01 Repository Map
 
-Revision: `main` @ `5ff58a7`. Module path `github.com/String-sg/teacher-workspace` (`go.mod`). The repo is a Go module at the root plus a pnpm workspace over `apps/*`.
+Revision: `main` @ `5ff58a7`. Synced to `abe5457` on 2026-10-16 (see `documentation-sync-state.json`). Module path `github.com/transformteamsg/teacher-workspace` (`go.mod`; renamed from `github.com/String-sg/...` in #204). The repo is a Go module at the root plus a pnpm workspace over `apps/*`.
 
 ## Layout
 
@@ -42,6 +42,7 @@ Revision: `main` @ `5ff58a7`. Module path `github.com/String-sg/teacher-workspac
 │   ├── adr/0001-local-development-for-remote-apps.md   (Accepted)
 │   ├── adr/0002-release-strategy.md                    (Accepted)
 │   └── go-test-conventions.md
+├── .github/CODEOWNERS            Default reviewers on every PR (#223)
 ├── .github/workflows/ci.yml       PR CI: format, lint, go-lint, go-test -> build+push pr image to ECR
 ├── .github/workflows/release.yml  On push to main with "release: vX.Y.Z (#N)": build+push vX.Y.Z, git tag
 ├── Dockerfile                     3-stage build, arm64, non-root runtime
@@ -64,7 +65,7 @@ Revision: `main` @ `5ff58a7`. Module path `github.com/String-sg/teacher-workspac
 | S5 | Sessions and CSRF | `server/internal/session/**` | Store interface, snapshot model, masked CSRF tokens, memstore, valkeystore (Verified; `subsystems/sessions.md`) |
 | S6 | Server utilities | `server/internal/htmlutil`, `server/internal/httputil`, `server/pkg/random`, `server/pkg/require` | Templates, response helpers, random strings, test helpers (Verified; `subsystems/page-render.md`, `subsystems/sessions.md`, `workflows/api-proxy.md` section 7) |
 | S7 | Host frontend | `apps/host` | Boot, routes, layout, catalogue, remotes, styling (Verified except shadcn-generated `components/ui/*`; `subsystems/host-shell.md`) |
-| S8 | mock-edupass | `apps/mock-edupass` | Local OIDC provider, 8 fixtures, PKCE, both client auth methods (Verified; `workflows/edupass-sign-in.md` section 8) |
+| S8 | mock-edupass | `apps/mock-edupass` | Local OIDC provider, 10 fixtures, PKCE, both client auth methods (Verified; `workflows/edupass-sign-in.md` section 8) |
 | S9 | Build, CI/CD, tooling | root configs, `.github/`, `Dockerfile`, `compose.yml` | Verified (`08-infrastructure-and-operations.md`, `09-local-development-and-testing.md`) |
 
 ## Entry points

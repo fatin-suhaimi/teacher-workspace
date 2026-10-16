@@ -1,6 +1,6 @@
 # 04 API and Interface Catalog
 
-Revision: `main` @ `5ff58a7`. Started in batch 3, completed for the server in batch 5, audited in batch 12 (2026-10-09). Every TW server route is traced; mock-edupass `oidc-provider` default endpoints not used by TW are listed but not reviewed.
+Revision: `main` @ `5ff58a7`. Synced to `abe5457` on 2026-10-16 (see `documentation-sync-state.json`). Started in batch 3, completed for the server in batch 5, audited in batch 12 (2026-10-09). Every TW server route is traced; mock-edupass `oidc-provider` default endpoints not used by TW are listed but not reviewed.
 
 ## Teacher Workspace server (Go)
 
@@ -8,9 +8,9 @@ All routes except `/static/` pass through RequestID, RequestLog and the Session 
 
 | Route | Handler | Auth required | Input | Success | Failure | Side effects | Tests | Flow doc |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `GET /auth/edupass` | `Handler.authEdupass` (`auth.go:38-64`) | no | query `return_to` (optional, sanitised by `safeReturnTo`) | 302 to Edupass authorize URL | 500 plain if no session in context | session data: return_to, state, nonce, code_verifier (replaces any pending login) | `auth_test.go:26-377` | `workflows/edupass-sign-in.md` |
-| `GET /auth/edupass/callback` | `Handler.authEdupassCallback` (`auth.go:90-253`) | no (needs the pending login in the session) | query `code`, `state`, or `error` / `error_description` | 302 to stored `return_to` (default `/`) | 302 `/login?error=oauth2_callback_failed&return_to=...`; 500 plain if no session | token request to Edupass; JWKS fetch; `SetUser` rotates the session ID; old session entry dropped | `auth_test.go:378-1395`, `TestSafeReturnTo` | `workflows/edupass-sign-in.md` |
-| `/api/{posts,student-insights}/*` (any method) | `Handler.proxy()` (`proxy.go:25-78`), `newRemoteBackendProxy` (`proxy.go:81-118`) | **no** (Q21) | path after `/api/<app>`, query and body passed through; client `Authorization` replaced | backend's status, headers (minus `Set-Cookie`) and body | 404 JSON `{message}` for unknown, unregistered or bare `/api/<app>`; 500 JSON if signing fails; 502 JSON on transport error; nothing on client cancel | outbound request with `Authorization: Bearer` HS256 JWT (`iss=tw`, `aud=pg` or `si`, `iat`, `exp`), no Cookie; session still re-saved | `proxy_test.go:39-480` | `workflows/api-proxy.md` |
+| `GET /auth/edupass` | `Handler.authEdupass` (`auth.go:38-64`) | no | query `return_to` (optional, sanitised by `safeReturnTo`) | 302 to Edupass authorize URL | 500 plain if no session in context | session data: return_to, state, nonce, code_verifier (replaces any pending login) | `auth_test.go:27-378` | `workflows/edupass-sign-in.md` |
+| `GET /auth/edupass/callback` | `Handler.authEdupassCallback` (`auth.go:85-291`) | no (needs the pending login in the session) | query `code`, `state`, or `error` / `error_description` | 302 to stored `return_to` (default `/`) | 302 `/login?error=oauth2_callback_failed&return_to=...` (including missing `id`/`name`/`cesEmail`, bad `iat`, or not exactly one recognised base role); 500 plain if no session | token request to Edupass; JWKS fetch; `SetUser` stores ID, name, email, role, attributes and rotates the session ID; old session entry dropped | `auth_test.go:379-2202`, `TestSafeReturnTo` | `workflows/edupass-sign-in.md` |
+| `/api/{posts,student-insights}/*` (any method) | `Handler.proxy()` (`proxy.go:25-119`), `newRemoteBackendProxy` (`proxy.go:122-159`) | **yes** since #212: session user with a role, else 500 (Q21) | path after `/api/<app>`, query and body passed through; client `Authorization` replaced | backend's status, headers (minus `Set-Cookie`) and body | 404 JSON `{message}` for unknown, unregistered or bare `/api/<app>`; 500 JSON if no session, no signed-in user, no role or nil attributes, or if signing fails; 502 JSON on transport error; nothing on client cancel | outbound request with `Authorization: Bearer` HS256 JWT (`iss=tw`, `aud=pg` or `si`, `iat`, `exp`, `role`, `effective_role`, `attributes`), no Cookie; session still re-saved | `proxy_test.go:40-747` | `workflows/api-proxy.md` |
 | `/` (catch-all, any method, any unmatched path) | `Handler.index()` (`index.go:24-57`) | no (anonymous sessions get the shell too, Q9) | none used (path, method and query ignored server-side) | 200 `text/html` with preloaded state `{csrfToken, remotes}` | 500 plain if no session, dev server unreachable or non-200, or template error (no partial output) | mints a masked CSRF token; in dev, fetches the template from the dev server | `index_test.go:96-272`, `template_test.go` | `subsystems/page-render.md` |
 | `/static/*` | `Handler.static` (`index.go:59-77`) | no session | path | dev: proxied to dev server; prod: file from `TW_BUILD_DIR` via `ServeFileFS` (Range, conditional GET, type by extension) | 404 plain for missing file, directory or unknown env; dev: 404 (dev server 404) or 502 | none | `index_test.go:274-372` | `subsystems/page-render.md` |
 
@@ -23,9 +23,9 @@ Not present (Verified absent from the route table): health or readiness endpoint
 | `GET /health` | inline (`app.ts:60-62`) | 200 | not listed |
 | `GET /.well-known/openid-configuration` | `oidc-provider` | issuer = `MOCK_EDUPASS_URL`; query response mode; S256 PKCE | `api.test.ts:20-120` |
 | `GET /jwks` | `oidc-provider` | new RSA-2048 key per boot | `api.test.ts:122-188` |
-| `GET /authorize` | `oidc-provider` (route renamed, `provider.ts:124-126`) | PKCE required; extra param `account` selects the fixture | `api.test.ts:189-332` |
+| `GET /authorize` | `oidc-provider` (route renamed, `provider.ts:136-138`) | PKCE required; extra param `account` selects the fixture | `api.test.ts:189-332` |
 | `GET /interaction/:uid` | `createApp` router (`app.ts:15-56`) | auto login (account param or staff-1) and auto consent (`openid`) | via `/authorize` tests |
-| `POST /token` | `oidc-provider` | `client_secret_post` or `private_key_jwt` (PS256 plus `x5t#S256` check) | `api.test.ts:333-1400` |
+| `POST /token` | `oidc-provider` | `client_secret_post` or `private_key_jwt` (PS256 plus `x5t#S256` check) | `api.test.ts:333-1439` |
 | other `oidc-provider` defaults (userinfo, etc.) | `oidc-provider` | not used by TW | not reviewed |
 
 ## Coverage map

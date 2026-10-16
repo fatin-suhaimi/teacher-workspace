@@ -1,6 +1,6 @@
 # 09 Local Development and Testing
 
-Revision: `main` @ `5ff58a7`. Batch 8 (2026-10-09).
+Revision: `main` @ `5ff58a7`. Synced to `abe5457` on 2026-10-16 (see `documentation-sync-state.json`). Batch 8 (2026-10-09).
 
 Sources: `CONTRIBUTING.md`, `README.md`, `.env.example`, `mise.toml`, `package.json`, `pnpm-workspace.yaml`, `lefthook.yml`, `compose.yml`, `apps/*/package.json`, `apps/mock-edupass/README.md`, `docs/go-test-conventions.md`, plus code read in earlier batches. Commands below are what the repo documents or what the code implies; none were run during this analysis.
 
@@ -59,7 +59,7 @@ Run from the **repo root** (the server reads `./.env` from the working directory
 TW_REMOTE_POSTS_MANIFEST_URL=http://127.0.0.1:3004/mf-manifest.json go run ./server/cmd/tw
 ```
 
-As written in `CONTRIBUTING.md`, this sets only the manifest URL. Config validation requires all three Posts values (manifest URL, backend base URL, signing key of at least 32 bytes) or none, so the server should refuse to start with that command alone (`config.go:450-485`; Q42). Set all three:
+As written in `CONTRIBUTING.md`, this sets only the manifest URL. Config validation requires all three Posts values (manifest URL, backend base URL, signing key of at least 32 bytes) or none, so the server should refuse to start with that command alone (`config.go:470-505`; Q42). Set all three:
 
 ```bash
 TW_REMOTE_POSTS_MANIFEST_URL=http://127.0.0.1:3004/mf-manifest.json \
@@ -72,7 +72,8 @@ Host and remote must both be development builds or both production builds (one s
 
 ### Signing in
 
-- Default fixture is `staff-1` (John Smith). To use another fixture (`staff-2` to `staff-8`, see `apps/mock-edupass/README.md`), add `&account=staff-N` to the mock's `/authorize` URL in the address bar after TW redirects you there.
+- Default fixture is `staff-1` (John Smith). To use another fixture (`staff-2` to `staff-10`, see `apps/mock-edupass/README.md` and the outcome table in `workflows/edupass-sign-in.md` section 7.1), add `&account=staff-N` to the mock's `/authorize` URL in the address bar after TW redirects you there. Several fixtures are refused on purpose (staff-4, -6, -8, -9); staff-5 needs `TW_EDUPASS_APP_CODE=TWSTG`.
+- A session saved before #199 has no role, so `/api/` returns 500 until you sign in again (or flush Valkey / restart with memstore).
 - To test `private_key_jwt`: generate `.certs/client.key` and `.certs/client.crt` with the `openssl` command in `CONTRIBUTING.md`. Set the server side (`TW_EDUPASS_CLIENT_AUTH_METHOD=private_key_jwt`, `TW_EDUPASS_CLIENT_PRIVATE_KEY_FILE`, `TW_EDUPASS_CLIENT_CERTIFICATE_FILE`). CONTRIBUTING shows only those; the mock also needs `MOCK_EDUPASS_TW_AUTH_METHOD=private_key_jwt` and `MOCK_EDUPASS_TW_CERTIFICATE_FILE=.certs/client.crt`, and must not also have the secret set for that method (`config.ts:40-136`).
 
 ### Production build locally
@@ -133,13 +134,13 @@ Run `mise run fmt` before committing Go, since no hook does it.
 
 | Symptom | Likely cause | Evidence |
 | --- | --- | --- |
-| Sign-in always returns to `/login?error=oauth2_callback_failed`, logs show `no pending login in session` | session cookie not stored: `TW_SESSION_SECURE=true` over plain HTTP, or a different host name between steps (`localhost` vs `127.0.0.1`) | `middleware/session.go:103-111`, `auth.go:109-118` |
+| Sign-in always returns to `/login?error=oauth2_callback_failed`, logs show `no pending login in session` | session cookie not stored: `TW_SESSION_SECURE=true` over plain HTTP, or a different host name between steps (`localhost` vs `127.0.0.1`) | `middleware/session.go:103-111`, `auth.go:104-112` |
 | "Sign in with Edupass" fails to connect | mock-edupass not running on `:9000` | `.env.example` Edupass URLs |
-| Server exits with a list of `TW_*` errors | config validation (all errors joined); check `.env` is in the directory you ran from | `config.go:78-112`, `dotenv.go:16-32` |
+| Server exits with a list of `TW_*` errors | config validation (all errors joined); check `.env` is in the directory you ran from | `config.go:79-113`, `dotenv.go:16-32` |
 | Server exits right after starting with Valkey | Valkey not reachable or wrong password; no fallback to memory | `main.go:76-80` |
 | Blank page or 500 on `/` in dev | Rsbuild dev server not running on `TW_DEV_SERVER_URL` | `template.go:49-82` |
 | `/posts` shows "This section didn't load" | Posts remote not registered (all three `TW_REMOTE_POSTS_*` needed) or a dev/prod build mismatch | `App.tsx:45-67`, `CONTRIBUTING.md` |
-| Production run exits on startup | `apps/host/dist` missing: run `pnpm build` | `config.go:97-102`, `handler.go:71-76` |
+| Production run exits on startup | `apps/host/dist` missing: run `pnpm build` | `config.go:98-103`, `handler.go:71-76` |
 | `mise install` fails with 403/429 | GitHub rate limit on tool downloads | `CONTRIBUTING.md` |
 | Valkey store tests fail with `get provider: rootless Docker not found, failed to create Docker provider` | Docker runs under Colima; testcontainers does not follow `docker context use colima` and finds no socket at `/var/run/docker.sock` | observed locally; fix in "Testcontainers with Colima" below |
 | `ld: warning: ignoring duplicate libraries: '-lglide_ffi', '-lm'` when building tests on macOS | linker noise from valkey-glide's prebuilt FFI library; harmless | `CONTRIBUTING.md` (valkey-glide is cgo-based) |

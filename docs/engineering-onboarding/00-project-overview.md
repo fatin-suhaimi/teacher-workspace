@@ -1,6 +1,6 @@
 # 00 Project Overview
 
-Revision: `main` @ `5ff58a7`. Written in Phase 0, rewritten after the batch 12 audit (2026-10-09). Every relationship below was verified in source unless marked otherwise.
+Revision: `main` @ `5ff58a7`. Synced to `abe5457` on 2026-10-16 (see `documentation-sync-state.json`). Written in Phase 0, rewritten after the batch 12 audit (2026-10-09). Every relationship below was verified in source unless marked otherwise.
 
 ## What it is
 
@@ -23,7 +23,7 @@ The project is pre-release: version `0.0.2`, released 2026-09-18 (`CHANGELOG.md`
 | --- | --- | --- |
 | Backend | Go 1.27.1, stdlib `net/http` with method patterns, `log/slog` JSON | `go.mod`, `main.go`, `handler.go:93-105` |
 | Sign-in | `coreos/go-oidc/v3`, `golang.org/x/oauth2`; code flow, PKCE, `client_secret_post` or `private_key_jwt` | `handler.go:40-64`, `auth.go` |
-| Tokens to backends | `golang-jwt/jwt/v5`, HS256 | `proxy.go:60-67` |
+| Tokens to backends | `golang-jwt/jwt/v5`, HS256 | `proxy.go:88-108` |
 | Sessions | Valkey via `valkey-glide/go/v2` (cgo), or in-memory | `main.go:56-89`, `session/` |
 | Frontend | React 19, react-router 8, Rsbuild 2, `@module-federation/enhanced` 2, Tailwind 4 (`tw:` prefix), shadcn on Base UI | `apps/host/package.json`, `rsbuild.config.ts`, `App.css` |
 | Mock IdP | Node 24 (native TS), Express 5, `oidc-provider` 9 | `apps/mock-edupass/package.json` |
@@ -61,16 +61,16 @@ flowchart LR
 | --- | --- | --- |
 | Server renders `index.html` with `{csrfToken, remotes}` | `index.go:24-56`, `apps/host/index.html:7-9` | `subsystems/page-render.md` |
 | Shell registers remotes, loads `pg/Posts` and `pg/Groups` | `bootstrap.tsx:11`, `App.tsx:16-67` | `subsystems/host-shell.md` |
-| Sign-in via Edupass with PKCE, state, nonce | `auth.go:38-253` | `workflows/edupass-sign-in.md` |
+| Sign-in via Edupass with PKCE, state, nonce | `auth.go:38-291` | `workflows/edupass-sign-in.md` |
 | Sessions in Valkey or memory, sliding idle TTL | `main.go:56-89`, `middleware/session.go` | `subsystems/sessions.md` |
-| `/api/` proxy strips cookies and signs a JWT per app | `proxy.go:25-118` | `workflows/api-proxy.md` |
+| `/api/` proxy strips cookies and signs a JWT per app | `proxy.go:25-159` | `workflows/api-proxy.md` |
 | Catalogue links to 16 external URLs | `HomeView.tsx:24-202` | `subsystems/host-shell.md` section 5 |
 
 Containers, startup and configuration: `02-architecture.md`. Deployment topology beyond the image is outside the repo (`08-infrastructure-and-operations.md`, Q14).
 
 ## What a newcomer should know first
 
-1. **Identity stops at the session.** The server knows the user's email after sign-in. But the SPA has no "signed in" flag, and partner backends receive a JWT with no user claim. `/api/` also accepts anonymous callers, and CSRF tokens are never checked. These are the top items in the risk register (`07-security-and-auth.md` R1-R3).
+1. **Identity mostly stops at the session.** Since #199/#212 the server stores the user's Edupass ID, name, email, one base role and attributes, refuses sign-in without exactly one recognised base role, and `/api/` requires a signed-in user and forwards `role` and `attributes` in the JWT. Still open: the SPA has no "signed in" flag, the JWT has no subject (`sub`), signed-out `/api/` callers get 500 rather than 401, and CSRF tokens are never checked (`07-security-and-auth.md` R1-R3).
 2. **No database.** The only server-side state is one JSON session per browser (`06-data-model.md`).
 3. **Remotes are hard-coded per app.** Posts/`pg` and Student Insights/`si` identifiers appear in config, page render, proxy and `App.tsx` (`12-change-impact-guide.md` C1).
 4. **Local dev needs three processes** (host dev server, Go server, mock-edupass). Two `CONTRIBUTING.md` commands are incomplete (`09-local-development-and-testing.md`, Q41, Q42).

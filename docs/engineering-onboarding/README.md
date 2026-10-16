@@ -2,9 +2,9 @@
 
 Evidence-backed onboarding docs for Teacher Workspace, built incrementally following `CODEBASE_MASTER_PROMPT.md` (in the claude.ai Project "Teacher Workspace 2.0").
 
-- **Revision analysed:** `main` @ `5ff58a78d09a37a6d662794297d7cdf70aeedb91` (read from `.git/refs/heads/main`; uncommitted local changes were not checked)
+- **Revision analysed:** initial analysis at `main` @ `5ff58a78d09a37a6d662794297d7cdf70aeedb91`; **incrementally synced to upstream `transformteamsg/teacher-workspace` `main` @ `abe54576c604b5879679bf98a7cfd1fd3d0e7e8e` on 2026-10-16** (9 commits, #199 to #223). The authoritative checkpoint is [`documentation-sync-state.json`](documentation-sync-state.json); each run is logged in [`15-documentation-sync-log.md`](15-documentation-sync-log.md).
 - **Status:** Phases 0 to 6 complete as of 2026-10-09, within the limits recorded in `03-coverage-ledger.md` (audit summary): every in-scope first-party source and config file inspected; test files reviewed by case name; deployment infrastructure outside the repo.
-- **Keeping it current:** when `main` moves, re-inspect changed files and update the affected docs (`UPDATE <scope>` in the master prompt). Citations are `file:line` at the revision above.
+- **Keeping it current:** when `main` moves, re-inspect changed files and update the affected docs (`UPDATE <scope>` in the master prompt). Citations are `file:line` at the synced revision (`abe5457`), except the `infra/` track, which states its own app revision. A doc's own "Revision:" header records when it was written; a "Synced to" note means it was re-verified at the checkpoint.
 
 ## Status labels used throughout
 
@@ -34,6 +34,8 @@ Evidence-backed onboarding docs for Teacher Workspace, built incrementally follo
 | [12-change-impact-guide.md](12-change-impact-guide.md) | 14 change recipes: files, tests, docs, partner impact, release impact |
 | [13-session-handoff.md](13-session-handoff.md) | Resume checkpoint for future sessions |
 | [14-hands-on-learning-tracker.md](14-hands-on-learning-tracker.md) | Hands-on learning: subsystem familiarity matrix with doc references, roadmap, exercises E1-E15 and issue-based G1-G12, open-issue status vs code, progress log |
+| [15-documentation-sync-log.md](15-documentation-sync-log.md) | One entry per incremental sync run: range, source changes, doc changes, verification, remaining work |
+| [documentation-sync-state.json](documentation-sync-state.json) | Authoritative checkpoint: the upstream commit these docs are verified against |
 | [subsystems/sessions.md](subsystems/sessions.md) | Session model, middleware lifecycle, TTLs, cookie, CSRF, stores, risks |
 | [subsystems/page-render.md](subsystems/page-render.md) | Dev vs prod page rendering, preloaded state contract, static serving, response helpers |
 | [subsystems/observability.md](subsystems/observability.md) | Request ID, access log, full log catalog, what is missing, debugging guide |

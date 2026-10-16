@@ -1,6 +1,6 @@
 # 06 Data Model
 
-Revision: `main` @ `5ff58a7`. Batch 10 (2026-10-09). Structures spot-checked in this batch: `session.go:43-61`, `index.go:14-22`, `auth.go:22-27, 155-164, 235-237`, `proxy.go:61-66`, `provider.ts:7-62`.
+Revision: `main` @ `5ff58a7`. Synced to `abe5457` on 2026-10-16 (see `documentation-sync-state.json`). Batch 10 (2026-10-09). Structures spot-checked in this batch: `session.go:43-65`, `index.go:14-22`, `auth.go:22-27, 146-155, 236-241`, `proxy.go:89-105`, `provider.ts:7-74`.
 
 ## 1. Summary
 
@@ -19,7 +19,11 @@ classDiagram
         +map data (optional)
     }
     class User {
+        +string id
+        +string name
         +string email
+        +string role
+        +string[] attributes
     }
     class PendingLogin {
         <<keys inside data>>
@@ -62,29 +66,31 @@ classDiagram
     class EdupassIDToken {
         <<RS256 from Edupass>>
         +sub
-        +email (used)
-        +name
-        +groups[]
+        +iat (checked)
+        +id (used)
+        +name (used)
+        +cesEmail (used)
+        +groups[] (resolved)
         +nonce (checked)
     }
     SessionSnapshot *-- User
     SessionSnapshot *-- PendingLogin
     SessionCookie ..> SessionSnapshot : id references
     PreloadedState *-- Remote
-    EdupassIDToken ..> User : email copied at sign-in
+    EdupassIDToken ..> User : id, name, cesEmail copied, groups resolved
 ```
 
 | Structure | Where it lives | Writer | Reader | Lifetime | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| Session snapshot | Valkey `TW_SESSION_VALKEY_PREFIX` (default `session:`) + ID, or memstore map | Session middleware (`session.Save`) on every session-backed response | Session middleware (`session.Load`) on every session-backed request | idle TTL: 3h anonymous, 30m signed in | `session.go:50-56, 104-122`, `valkeystore.go:45-101`, `middleware/session.go:88-111` |
-| `User` | inside snapshot | `authEdupassCallback` via `SetUser` | nothing yet reads it for decisions (`IsAuthenticated` only picks the TTL) | with the session | `session.go:58-61`, `auth.go:249`, `middleware/session.go:90` |
-| Pending login | snapshot `data` | `authEdupass` | `authEdupassCallback` (`GetAndDelete`) | until callback or expiry | `auth.go:22-27, 52-55, 100-107` |
-| Session cookie | browser | Session middleware | browser sends it back; TW strips it before proxying | `Max-Age` = current TTL | `middleware/session.go:103-111`, `proxy.go:86` |
+| Session snapshot | Valkey `TW_SESSION_VALKEY_PREFIX` (default `session:`) + ID, or memstore map | Session middleware (`session.Save`) on every session-backed response | Session middleware (`session.Load`) on every session-backed request | idle TTL: 3h anonymous, 30m signed in | `session.go:50-56, 108-126`, `valkeystore.go:45-101`, `middleware/session.go:88-111` |
+| `User` | inside snapshot | `authEdupassCallback` via `SetUser` | `IsAuthenticated` picks the TTL; `Handler.proxy` copies `Role` and `Attributes` into the backend JWT and refuses users without them | with the session | `session.go:59-65`, `auth.go:281-287`, `middleware/session.go:90`, `proxy.go:69-105` |
+| Pending login | snapshot `data` | `authEdupass` | `authEdupassCallback` (`GetAndDelete`) | until callback or expiry | `auth.go:22-27, 52-55, 95-102` |
+| Session cookie | browser | Session middleware | browser sends it back; TW strips it before proxying | `Max-Age` = current TTL | `middleware/session.go:103-111`, `proxy.go:127` |
 | Preloaded state | `<script id="preloaded-state">` in the HTML | `Handler.index` | host `stores/preloaded-state.ts` (and potentially remotes via the DOM) | one page load | `index.go:14-46`, `preloaded-state.ts` |
-| Remote backend JWT | `Authorization` header to backend | `Handler.proxy` | partner backend | `TW_REMOTE_SIGNED_TOKEN_TTL` (1m) | `proxy.go:60-67, 88` |
-| Client assertion JWT | token request body to Edupass | `authEdupassCallback` (`private_key_jwt` only) | Edupass | 5 minutes | `auth.go:153-176` |
-| Edupass ID token | callback memory only | Edupass | `authEdupassCallback` (verify, nonce, email) | discarded after the callback | `auth.go:215-249` |
-| Configuration | process memory (`config.Config`) | `config.Default`, `dotenv.Load`, `Validate` (adds `ClientCredentials`) | handlers, middleware, `main` | process lifetime | `config.go:27-441`, `02-architecture.md` |
+| Remote backend JWT | `Authorization` header to backend | `Handler.proxy` | partner backend | `TW_REMOTE_SIGNED_TOKEN_TTL` (1m) | `proxy.go:88-107, 129` |
+| Client assertion JWT | token request body to Edupass | `authEdupassCallback` (`private_key_jwt` only) | Edupass | 5 minutes | `auth.go:144-167` |
+| Edupass ID token | callback memory only | Edupass | `authEdupassCallback` (verify, nonce, iat, required claims, group resolution) | discarded after the callback | `auth.go:204-287` |
+| Configuration | process memory (`config.Config`) | `config.Default`, `dotenv.Load`, `Validate` (adds `ClientCredentials`) | handlers, middleware, `main` | process lifetime | `config.go:27-461`, `02-architecture.md` |
 | Welcome-modal flag | browser `localStorage["tw_welcome_modal_seen"]` | `WelcomeModal` on close | `WelcomeModal` on mount | until storage is cleared | `WelcomeModal.tsx:13-31` |
 | Access and error logs | stdout (JSON) | `RequestLog`, handlers | log platform (Unknown) | Unknown retention | `subsystems/observability.md` |
 
@@ -96,7 +102,13 @@ Stored JSON (field names from the struct tags; values illustrative):
 {
   "id": "<32 base58 chars>",
   "csrf_token": "<32 base58 chars, the unmasked secret>",
-  "user": { "email": "john.smith@example.com" },
+  "user": {
+    "id": "staff-1",
+    "name": "John Smith",
+    "email": "john.smith@example.com",
+    "role": "ROLE_TEACHER",
+    "attributes": ["ATTR_PG_ADMIN"]
+  },
   "data": {
     "edupass_state": "...",
     "edupass_nonce": "...",
@@ -106,9 +118,9 @@ Stored JSON (field names from the struct tags; values illustrative):
 }
 ```
 
-`user` and `data` are omitted when empty (`omitempty`). After a successful sign-in, `data` is cleared and the ID and `csrf_token` are regenerated (`session.go:194-199`).
+`user` and `data` are omitted when empty (`omitempty`). After a successful sign-in, `data` is cleared and the ID and `csrf_token` are regenerated (`session.go:198-203`).
 
-Invariants enforced on load (`session.go:76-102`). A stored entry that breaks any of these is treated as undecodable, logged at WARN, and replaced by a fresh session (`middleware/session.go:72-74`):
+Invariants enforced on load (`session.go:80-106`). A stored entry that breaks any of these is treated as undecodable, logged at WARN, and replaced by a fresh session (`middleware/session.go:72-74`):
 
 | Invariant                                   | Check                  |
 | ------------------------------------------- | ---------------------- |
@@ -116,7 +128,7 @@ Invariants enforced on load (`session.go:76-102`). A stored entry that breaks an
 | Stored `id` equals the key it was read from | `snap.ID != id`        |
 | CSRF secret present                         | `snap.CSRFToken == ""` |
 
-Type caveat: after a round trip through JSON, numbers in `data` come back as `float64` and structs as `map[string]any` (`session.go:160-162`). Store simple strings or read back with those types.
+Type caveat: after a round trip through JSON, numbers in `data` come back as `float64` and structs as `map[string]any` (`session.go:164-166`). Store simple strings or read back with those types.
 
 Compatibility: adding optional fields to `User` or new `data` keys is backward compatible, because old entries decode with zero values. Renaming or removing `id` or `csrf_token` would invalidate every live session. That is acceptable, since sessions are short-lived, but it would sign everyone out on deploy.
 
@@ -126,39 +138,43 @@ Lifecycle and state machine: see `subsystems/sessions.md` section 5.
 
 ```mermaid
 flowchart LR
-    E["Edupass ID token<br/>sub, email, name, groups"] -- "email only" --> U["session.User{Email}"]
+    E["Edupass ID token<br/>sub, id, name, cesEmail, groups"] -- "id, name, cesEmail; groups resolved" --> U["session.User{ID, Name, Email, Role, Attributes}"]
     U --> SS[("session snapshot<br/>Valkey")]
     SS -- "IsAuthenticated: TTL choice only" --> MW["Session middleware"]
     SS -- "csrf secret, masked per render" --> PS["PreloadedState.csrfToken"]
     CFG["config: remote manifest URLs"] --> PS2["PreloadedState.remotes"]
     PS --> HOST["host SPA (validates, does not use csrfToken)"]
     PS2 --> HOST
-    CFG2["config: signing key, aud"] --> JWT["Remote backend JWT<br/>iss, aud, iat, exp"]
+    CFG2["config: signing key, aud"] --> JWT["Remote backend JWT<br/>iss, aud, iat, exp, role, effective_role, attributes"]
     JWT --> BE["partner backend"]
-    U -. "not propagated" .-> JWT
+    U -- "Role, Attributes" --> JWT
+    U -. "ID, Name, Email not propagated" .-> JWT
 ```
 
-The dashed edge is the main data-model gap. User identity stops at the session: it reaches neither the SPA (no signed-in flag) nor partner backends (no user claim) (Q21, Q30).
+Since #212 the role and attributes reach partner backends. The dashed edge is the remaining gap: the user's ID, name and email stop at the session, so backends cannot tell users with the same role apart, and the SPA still has no signed-in flag (Q21, Q30).
 
-## 5. Identity data available from Edupass but not stored
+## 5. Identity data from Edupass and what is stored
 
-Per the mock provider (`provider.ts:7-62`, `151-152`) and its README:
+Per the mock provider (`provider.ts:7-74`, `154-175`) and its README, and the claims TW reads (`auth.go:236-287`):
 
 | Claim | Shape | Example | Used by TW |
 | --- | --- | --- | --- |
 | `sub` | string | `staff-1` | no |
-| `email` | string, may be absent in principle | `john.smith@example.com` | yes (required) |
-| `name` | string, optional | `John Smith` | no |
-| `groups` | string array, always present, may be empty | `["0001_TW_ROLE_TEACHER", "0001_TW_ATTR_PG_ADMIN"]` | no |
+| `iat` | number | Unix seconds | checked only (present, not more than 5 min ahead) |
+| `id` | string | `staff-1` | yes, `User.ID` (required) |
+| `name` | string | `John Smith` | yes, `User.Name` (required) |
+| `cesEmail` | string, omitted when the account has none | `john.smith@example.com` | yes, `User.Email` (required) |
+| `groups` | string array, always present, may be empty | `["0001_TW_ROLE_TEACHER", "0001_TW_ATTR_PG_ADMIN"]` | resolved into `User.Role` (`ROLE_TEACHER`) and `User.Attributes` (`["ATTR_PG_ADMIN"]`) |
+| `email` | no longer emitted by the mock | | no |
 
-Group string grammar (from fixtures; see `10-business-glossary.md`): `<location>_<appCode>_<ROLE or ATTR>_<NAME>`, where location is a school code such as `0001` or `X` for global, and app code is `TW` (production) or `TWSTG` (pre-production). A future `User` model would likely be `{sub, email, name, roles: [{location, role}], attributes: [{location, attr}]}` (Inferred design suggestion, not in code).
+Group string grammar (now parsed in code, `resolveEdupassGroups`, `auth.go:452-489`; see `10-business-glossary.md` and `workflows/edupass-sign-in.md` section 7.1): `<location>_<appCode>_<ROLE or ATTR>_<NAME>`, where location is a school code such as `0001` or `X` for global, and app code is `TW` (production) or `TWSTG` (pre-production), chosen by `TW_EDUPASS_APP_CODE`. The stored role and attributes drop the location; only MOE Kindergarten locations are acted on (their base roles are refused).
 
 ## 6. Where to change things
 
 | Change | Touch |
 | --- | --- |
-| Store more about the user | `session.User` (`session.go:58-61`), claims struct `auth.go:235-237`, `SetUser` call `auth.go:249`; additive JSON, so no migration needed |
+| Store more about the user | `session.User` (`session.go:59-65`), claims struct `auth.go:236-241`, `SetUser` call `auth.go:281-287`; additive JSON, so no migration needed, but old sessions decode with zero values (the proxy refuses an empty `Role`) |
 | Expose sign-in state to the SPA | `PreloadedState` (`index.go:14-17`) and host `preloaded-state.ts` validator, changed together |
-| Carry identity to backends | JWT claims `proxy.go:61-66`, `proxy_test.go:254-262`, and the partner contract (`workflows/api-proxy.md` section 4) |
+| Carry more identity to backends (e.g. `sub`) | JWT claims struct `proxy.go:89-105`, `proxy_test.go:446-533`, and the partner contract (`workflows/api-proxy.md` section 4) |
 | New session data key | constant beside `auth.go:22-27` style keys; remember `SetUser` clears `data` |
 | Change session storage layout | `valkeystore` prefix/key scheme and `CONTRIBUTING.md` valkey-cli instructions |

@@ -1,25 +1,25 @@
 # Subsystem: Sessions and CSRF
 
-Revision: `main` @ `5ff58a7`. Phase 2, batch 2 (2026-10-09).
+Revision: `main` @ `5ff58a7`. Synced to `abe5457` on 2026-10-16 (see `documentation-sync-state.json`). Phase 2, batch 2 (2026-10-09).
 
 Files in scope: `server/internal/session/session.go`, `server/internal/session/csrf.go`, `server/internal/middleware/session.go`, `server/internal/session/memstore/memstore.go`, `server/internal/session/valkeystore/valkeystore.go`, `server/pkg/random/random.go`. Tests: case names of all six test files reviewed; bodies not read. Call sites in `handler/auth.go` and `handler/index.go` were located by search only (their logic is batch 3 and 4).
 
 ## 1. Purpose
 
-Give every non-static request a server-side session identified by an opaque cookie, persist it in a pluggable store, rotate it on sign-in, and issue CSRF tokens bound to it. The session currently holds very little: a user email once signed in, plus temporary sign-in data.
+Give every non-static request a server-side session identified by an opaque cookie, persist it in a pluggable store, rotate it on sign-in, and issue CSRF tokens bound to it. The session holds little: once signed in, the user's Edupass ID, name, email, one base role and attributes (since #199), plus temporary sign-in data.
 
 ## 2. Public interface
 
 | Symbol | Contract (from doc comments, Verified against code) | Location |
 | --- | --- | --- |
 | `session.Store` | `Prepare(ctx, id)` returns the last committed bytes, or `(nil, nil)` for empty, missing or expired id. `Commit(ctx, id, data, ttl)` replaces the entry; errors on empty id or ttl <= 0. `Drop(ctx, id)` removes; no-op for empty/missing. All must be concurrency-safe and fail with the context's error if ctx is already done | `session.go:14-31` |
-| `session.New()` | New unauthenticated session with random ID and CSRF secret | `session.go:63-69` |
-| `session.Load(ctx, store, id)` | Stored session, or a **new** one when none; error wrapping `ErrUndecodable` if JSON is bad, the stored ID differs from `id`, or the CSRF secret is empty | `session.go:71-102` |
-| `session.Save(ctx, store, sess, ttl)` | JSON-encode the snapshot and `Commit` under the current ID | `session.go:104-122` |
-| `(*Session).CSRFToken()` / `VerifyCSRFToken(tok)` | Masked token, different on every call; verify accepts any token minted from the current secret, in constant time | `session.go:130-143`, `csrf.go` |
-| `(*Session).User()`, `IsAuthenticated()` | User present or not | `session.go:145-158` |
-| `Get[T]`, `GetAndDelete[T]`, `Set`, `Delete` | Free-form data map; after a round trip numbers are `float64` and structs are `map[string]any` | `session.go:160-187` |
-| `(*Session).SetUser(u)` | Attach user **and** rotate ID, rotate CSRF secret, clear data (anti session fixation) | `session.go:189-199` |
+| `session.New()` | New unauthenticated session with random ID and CSRF secret | `session.go:67-73` |
+| `session.Load(ctx, store, id)` | Stored session, or a **new** one when none; error wrapping `ErrUndecodable` if JSON is bad, the stored ID differs from `id`, or the CSRF secret is empty | `session.go:75-106` |
+| `session.Save(ctx, store, sess, ttl)` | JSON-encode the snapshot and `Commit` under the current ID | `session.go:108-126` |
+| `(*Session).CSRFToken()` / `VerifyCSRFToken(tok)` | Masked token, different on every call; verify accepts any token minted from the current secret, in constant time | `session.go:134-147`, `csrf.go` |
+| `(*Session).User()`, `IsAuthenticated()` | User present or not | `session.go:149-162` |
+| `Get[T]`, `GetAndDelete[T]`, `Set`, `Delete` | Free-form data map; after a round trip numbers are `float64` and structs are `map[string]any` | `session.go:164-191` |
+| `(*Session).SetUser(u)` | Attach user **and** rotate ID, rotate CSRF secret, clear data (anti session fixation) | `session.go:193-203` |
 | `middleware.Session(store, opts)` | Per-request load, attach to context, save before first write, set cookie | `middleware/session.go:37-132` |
 | `middleware.SessionFromContext(ctx)` | Retrieve the request's session | `middleware/session.go:134-139` |
 
@@ -34,7 +34,11 @@ classDiagram
         -map~string,any~ data
     }
     class User {
+        +string ID
+        +string Name
         +string Email
+        +string Role
+        +string[] Attributes
     }
     class snapshot {
         +string id
@@ -48,11 +52,11 @@ classDiagram
 
 | Fact | Status | Evidence |
 | --- | --- | --- |
-| Stored value is the JSON `snapshot` (`id`, `csrf_token`, optional `user`, optional `data`) | Verified | `session.go:50-56, 110-116` |
-| `User` holds **only `Email`**; no name, roles, groups, school/location or Edupass `sub` | Verified | `session.go:58-61` |
-| Session ID and CSRF secret: 32 chars from the base58 alphabet via `crypto/rand` with rejection sampling (about 187 bits each) | Verified | `session.go:33-35, 66-67`, `random.go:18-83` |
+| Stored value is the JSON `snapshot` (`id`, `csrf_token`, optional `user`, optional `data`) | Verified | `session.go:50-56, 114-120` |
+| `User` holds `ID` (Edupass `id` claim), `Name`, `Email` (from `cesEmail`), `Role` (the one resolved base role, e.g. `ROLE_TEACHER`) and `Attributes` (e.g. `["ATTR_PG_ADMIN"]`, `[]` when none); no school/location or Edupass `sub` (since #199, synced 2026-10-16 at `abe5457`) | Verified | `session.go:59-65`, `auth.go:281-287` |
+| Session ID and CSRF secret: 32 chars from the base58 alphabet via `crypto/rand` with rejection sampling (about 187 bits each) | Verified | `session.go:33-35, 70-71`, `random.go:18-83` |
 | Valkey key = `TW_SESSION_VALKEY_PREFIX` (default `session:`) + ID; `GET`, `SET` with expiry, `DEL` | Verified | `valkeystore.go:45-101` |
-| Known data keys: Edupass return-to, state, nonce, PKCE code verifier, set on `GET /auth/edupass` and read-and-deleted on the callback | Verified (call sites only) | `auth.go:52-55, 100-107` |
+| Known data keys: Edupass return-to, state, nonce, PKCE code verifier, set on `GET /auth/edupass` and read-and-deleted on the callback | Verified (call sites only) | `auth.go:52-55, 95-102` |
 
 ## 4. Request lifecycle through the Session middleware
 
@@ -120,7 +124,7 @@ stateDiagram-v2
     Anonymous --> Anonymous: any request (re-saved, idle TTL = DefaultTTL, 3h)
     Anonymous --> SigningIn: GET /auth/edupass sets state, nonce, verifier, return_to
     SigningIn --> Anonymous: callback fails after reading and deleting the sign-in keys
-    SigningIn --> Authenticated: callback succeeds, SetUser(email) rotates ID and CSRF secret, clears data, drops old entry
+    SigningIn --> Authenticated: callback succeeds, SetUser(id, name, email, role, attributes) rotates ID and CSRF secret, clears data, drops old entry
     Authenticated --> Authenticated: any request (re-saved, idle TTL = AuthenticatedTTL, 30m)
     Anonymous --> [*]: idle longer than DefaultTTL (store expiry)
     SigningIn --> [*]: idle longer than DefaultTTL
@@ -134,11 +138,11 @@ stateDiagram-v2
 | **No absolute lifetime**: an active signed-in session never expires on its own | Verified (no such logic exists) | `middleware/session.go`, `session.go` |
 | **No logout**: nothing calls `Store.Drop` except ID rotation, and no logout route is registered | Verified | `middleware/session.go:115-119`; route table `handler.go:93-105` |
 | Why DefaultTTL (3h) is longer than AuthenticatedTTL (30m) | Unknown (likely a short idle limit for signed-in staff; rationale not in repo) | ask maintainers |
-| Failure path of the callback returning the session to Anonymous | Verified (keys are `GetAndDelete`d before any validation, and every failure redirects without `SetUser`) | `auth.go:100-247`; `workflows/edupass-sign-in.md` section 5 |
+| Failure path of the callback returning the session to Anonymous | Verified (keys are `GetAndDelete`d before any validation, and every failure redirects without `SetUser`) | `auth.go:95-261`; `workflows/edupass-sign-in.md` section 5 |
 
 ## 6. CSRF tokens (resolves Q8, server side)
 
-How tokens work (Verified, `csrf.go`, `session.go:130-143`):
+How tokens work (Verified, `csrf.go`, `session.go:134-147`):
 
 1. Each session has a 32-char secret.
 2. `CSRFToken()` XORs the secret with a fresh 32-byte one-time pad and returns base64url(`pad || secret XOR pad`), 86 chars. Each call differs, so the token does not leak the secret through compression side channels (the BREACH mitigation pattern).
@@ -170,24 +174,24 @@ So, at this revision, CSRF protection relies only on `SameSite=Lax` (which block
 
 | # | Finding | Status | Impact |
 | --- | --- | --- | --- |
-| R1 | **`/api/` proxy does not require an authenticated session and carries no user identity.** `proxy()` routes `/api/{posts,student-insights}/...` to the backend with a fresh HS256 JWT (`iss=tw`, `aud=pg` or `si`, `iat`, `exp`) for any caller, signed in or not; no `sub` or email claim; no `SessionFromContext` call | Verified, `proxy.go:25-78` | High: conflicts with ADR-0001 hop 3 ("authenticates the session... signs a short-lived JWT scoped to that one app"). Possibly in progress for a 0.0.x pre-release. Q21 |
+| R1 | **Partly resolved by #212 (synced 2026-10-16).** `proxy()` now reads the session user and refuses (500 JSON) when there is no session, no user, no `Role` or nil `Attributes`; the JWT carries `role`, `effective_role` and `attributes`. Still open: no `sub` or other per-user identity, and a signed-out caller gets 500 rather than 401 | Verified, `proxy.go:60-107` | Medium: backends can authorise by role but cannot tell users apart. Q21 |
 | R2 | CSRF tokens issued but never checked (section 6) | Verified | Medium (SameSite=Lax limits it); matters once R1 is fixed and `/api/` mutates data |
 | R3 | Every cookieless request creates and stores a new session for 3h (bots, health probes, first page loads) | Verified by code reading | Store growth; with memstore, unbounded memory growth in long-running processes (no sweeper) |
 | R4 | Concurrent requests on one session are last-write-wins over the whole snapshot (load, modify, save; no locking or versioning). A request that loaded the pre-sign-in session can re-save it under the old ID after the callback dropped it, leaving an orphaned anonymous entry until it expires | Verified by code reading | Low today (only sign-in mutates); grows if more state is stored |
 | R5 | No absolute session lifetime and no logout | Verified | Policy question for security review (Q22) |
-| R6 | `User` stores only email; roles/groups from Edupass (e.g. `0001_TW_ROLE_TEACHER` in mock fixtures) are not kept in the session | Verified | Authorisation by role is not possible from session data today (Q7) |
+| R6 | ~~`User` stores only email~~ **Resolved by #199:** `User` stores the resolved base role and attributes (location stripped). Sessions written before #199 decode with an empty `Role`, so `/api/` returns 500 for them until the user signs in again | Verified (`session.go:59-65`, `proxy.go:80`); the stale-session effect is Inferred | Low, transitional |
 
 ## 9. Where to change things
 
 | Change | Where |
 | --- | --- |
-| Store more user attributes (roles, school, name) | `session.User` (`session.go:58-61`) plus `SetUser` caller in `auth.go:249`; existing sessions will decode fine because fields are additive JSON |
+| Store more user attributes (e.g. school/location, `sub`) | `session.User` (`session.go:59-65`) plus `SetUser` caller in `auth.go:281-287`; existing sessions decode because fields are additive JSON, but check consumers that require a field to be set (the proxy requires `Role` and non-nil `Attributes`, `proxy.go:80`) |
 | Require sign-in for `/api/` | `proxy()` handler or a middleware in `Handler.Routes` around `/api/` (`handler.go:97`) |
 | Enforce CSRF | A middleware on unsafe methods calling `SessionFromContext(...).VerifyCSRFToken(header)`; the host must send `preloadedState.csrfToken` in a header |
 | Logout | New route calling `store.Drop` (not reachable from handlers today: `Handler` has no store reference) or a session-level "destroy" flag the middleware honours |
 | Absolute timeout | Add a created-at field to `snapshot` and check it in `Load` or the middleware |
 
-Breakpoints: `middleware/session.go:65` (load), `:98` (save), `session.go:194` (rotation), `proxy.go:51` (API routing).
+Breakpoints: `middleware/session.go:65` (load), `:98` (save), `session.go:198` (rotation), `proxy.go:51` (API routing).
 
 ## 10. Tests
 

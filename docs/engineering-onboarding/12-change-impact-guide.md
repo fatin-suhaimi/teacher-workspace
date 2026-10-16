@@ -1,6 +1,6 @@
 # 12 Change-Impact Guide
 
-Revision: `main` @ `5ff58a7`. Batch 11 (2026-10-09). Recipes for common changes, built from the verified analysis in batches 1 to 10. Each lists the files to touch, the tests to update or add, other docs to update, who outside this repo is affected, and the release impact under ADR-0002's SemVer rule. Under that rule, major is reserved for breaking "the host-shell and proxy interface, or the image's runtime contract". While the project is at `0.0.x`, these are guidance only.
+Revision: `main` @ `5ff58a7`. Synced to `abe5457` on 2026-10-16 (see `documentation-sync-state.json`). Batch 11 (2026-10-09). Recipes for common changes, built from the verified analysis in batches 1 to 10. Each lists the files to touch, the tests to update or add, other docs to update, who outside this repo is affected, and the release impact under ADR-0002's SemVer rule. Under that rule, major is reserved for breaking "the host-shell and proxy interface, or the image's runtime contract". While the project is at `0.0.x`, these are guidance only.
 
 ## Quick lookup
 
@@ -25,7 +25,7 @@ Revision: `main` @ `5ff58a7`. Batch 11 (2026-10-09). Recipes for common changes,
 
 |  |  |
 | --- | --- |
-| Files | `config.go`: three fields in `RemoteAppsConfig`, a validation block and an `Is<App>Registered` helper (copy the Posts pattern, `config.go:429-536`); `index.go:25-32`: append `Remote{Name, Entry}`; `proxy.go:28-41`: add a `remoteBackends["<api-prefix>"]` entry with its audience; `apps/host/src/App.tsx`: lazy `loadRemote('<name>/<Module>')` route wrapped in `ErrorBoundary` + `Suspense`; `Sidebar.tsx` and/or `HomeView.tsx` links; `.env.example` |
+| Files | `config.go`: three fields in `RemoteAppsConfig`, a validation block and an `Is<App>Registered` helper (copy the Posts pattern, `config.go:449-556`); `index.go:25-32`: append `Remote{Name, Entry}`; `proxy.go:28-41`: add a `remoteBackends["<api-prefix>"]` entry with its audience; `apps/host/src/App.tsx`: lazy `loadRemote('<name>/<Module>')` route wrapped in `ErrorBoundary` + `Suspense`; `Sidebar.tsx` and/or `HomeView.tsx` links; `.env.example` |
 | Tests | `config_test.go` (accept/reject tables), `index_test.go` (remote embedding), `proxy_test.go` (routing, audience, prefix stripping) |
 | Docs | `02-architecture.md` config reference, `workflows/api-proxy.md` path mapping, `10-business-glossary.md`, `CONTRIBUTING.md` local-remote section |
 | Outside the repo | the remote team: MF name, exposed modules, shared singleton versions, manifest URL, and verifying the JWT (`aud`, key); deployment config for the three new env vars |
@@ -47,19 +47,22 @@ Revision: `main` @ `5ff58a7`. Batch 11 (2026-10-09). Recipes for common changes,
 
 |  |  |
 | --- | --- |
-| Files | claims struct `auth.go:235-237` (add `sub`, `name`, `groups`); parse groups and reject users without a TW role before `SetUser` (`auth.go:243-249`); extend `session.User` (`session.go:58-61`) |
-| Tests | `auth_test.go`: new cases per mock fixture (staff-4 conflict, staff-5 `TWSTG`, staff-7 non-TW role, staff-8 empty groups); also add the missing guard-branch tests (Q25) |
+| Status | **Largely done (#199, #200, #202; synced 2026-10-16).** Use this recipe for further changes, e.g. a new role or attribute code, a new MK school, or keeping the location |
+| Files | claims struct `auth.go:236-241`; allow-lists `isRecognizedEdupassRole`, `isRecognizedEdupassAttribute`, `isMKSchoolCode` (`auth.go:344-408`); `resolveEdupassGroups` (`auth.go:452-489`); one-base-role check (`auth.go:271-279`); `session.User` (`session.go:59-65`); app code config (`config.go:242-247, 336-339`) |
+| Tests | `TestResolveEdupassGroups` (`auth_test.go:2381`) for code-level cases; callback cases at `auth_test.go:1916-2151`; add the still-missing guard-branch tests (Q25); keep `apps/mock-edupass` fixtures (staff-1 to staff-10) in step |
 | Docs | `06-data-model.md`, `workflows/edupass-sign-in.md` section 7, `07-security-and-auth.md` R3, `10-business-glossary.md` |
-| Outside | product decision on the role model (Q26); Edupass must emit `groups` for this client |
+| Outside | product decision on the role model (Q26); Edupass must emit `groups` for this client; every partner backend reads the role from the JWT, so renaming a code is a contract change |
 | Release | minor; behaviourally significant if users start being rejected |
 | Watch out | session JSON is additive, so no migration; `SetUser` clears `data`, so read anything needed first; `TWSTG` vs `TW` app code must match the environment |
 
 ## C4. Require sign-in on `/api/` and add user identity to the JWT
 
+Status: **partly done (#212, synced 2026-10-16):** the proxy requires a session user with a role and adds `role`, `effective_role`, `attributes`. Remaining: a subject claim and a 401 response.
+
 |  |  |
 | --- | --- |
-| Files | `proxy.go:48-59`: `SessionFromContext`, `IsAuthenticated`, return 401 JSON; `proxy.go:61-66`: custom claims struct with `sub` (and email or roles from C3) |
-| Tests | `proxy_test.go`: the claim-set assertion at `proxy_test.go:254-262` must change; add an "anonymous caller gets 401" case; existing tests call `h.proxy()` without a session and will need one |
+| Files | `proxy.go:69-77`: return 401 JSON instead of 500 for a signed-out session; claims struct `proxy.go:89-105`: add `sub` (e.g. `u.ID`) |
+| Tests | `proxy_test.go`: the 500 cases at `proxy_test.go:194-352` (change the no-user case to 401); the claims test at `proxy_test.go:446-533` (add `sub`) |
 | Docs | `workflows/api-proxy.md` sections 4 and 6, `07-security-and-auth.md` R1, `04-api-catalog.md`, close Q21 |
 | Outside | **every partner backend**: new claims to read; remotes must handle 401 (e.g. send the user to `/login`) |
 | Release | **major** under ADR-0002 (proxy interface change); coordinate with partner teams; consider an ADR |
@@ -116,7 +119,7 @@ Revision: `main` @ `5ff58a7`. Batch 11 (2026-10-09). Recipes for common changes,
 | Tests | `middleware/session_test.go` (TTL, cookie), `session_test.go` (load/save), store tests |
 | Docs | `subsystems/sessions.md`, `06-data-model.md`, `CONTRIBUTING.md` valkey-cli section if keys change |
 | Release | patch; renaming `id` or `csrf_token`, or changing the key prefix, signs everyone out on deploy |
-| Watch out | TTLs below 1s are rejected for a reason (`Max-Age=0` quirk, `config.go:179-180`); `SameSite=Strict` would break the Edupass redirect back (the callback must carry the cookie on a cross-site top-level navigation) (Inferred, browser behaviour) |
+| Watch out | TTLs below 1s are rejected for a reason (`Max-Age=0` quirk, `config.go:180-181`); `SameSite=Strict` would break the Edupass redirect back (the callback must carry the cookie on a cross-site top-level navigation) (Inferred, browser behaviour) |
 
 ## C10. Add a middleware for every request
 
@@ -150,7 +153,7 @@ Revision: `main` @ `5ff58a7`. Batch 11 (2026-10-09). Recipes for common changes,
 
 |  |  |
 | --- | --- |
-| Files | `TW_EDUPASS_CLIENT_AUTH_METHOD` and credential vars (config only), or `Scopes` in `handler.go:54`; assertion shape `auth.go:153-176` |
+| Files | `TW_EDUPASS_CLIENT_AUTH_METHOD` and credential vars (config only), or `Scopes` in `handler.go:54`; assertion shape `auth.go:144-167`; for pre-prod Edupass also `TW_EDUPASS_APP_CODE=TWSTG` |
 | Tests | `auth_test.go` client auth sections, `config_test.go` credential sections; mock-edupass `api.test.ts` for the mock side |
 | Outside | the Edupass client registration; mock-edupass config (`MOCK_EDUPASS_TW_*`) for local dev |
 | Watch out | the key must be PKCS#8 RSA >= 2048 bits and match the cert, and cert expiry is only checked at startup (Q19) |

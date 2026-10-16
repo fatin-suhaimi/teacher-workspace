@@ -1,6 +1,6 @@
 # 03 Coverage Ledger
 
-Revision: `main` @ `5ff58a7`. Last updated: batch 12, AUDIT (2026-10-09). Every in-scope first-party source and config file is inspected; generated, vendored, binary, lockfile and secret files are excluded with reasons; test files are reviewed by case name with selected bodies read. Statuses: `inspected`, `partially inspected`, `identified`, `excluded (reason)`, `inaccessible`. "Inspected" means read in full at this revision, not that every call has been traced.
+Revision: `main` @ `5ff58a7`. Synced to `abe5457` on 2026-10-16 (see `documentation-sync-state.json`). Last updated: batch 12, AUDIT (2026-10-09). Every in-scope first-party source and config file is inspected; generated, vendored, binary, lockfile and secret files are excluded with reasons; test files are reviewed by case name with selected bodies read. Statuses: `inspected`, `partially inspected`, `identified`, `excluded (reason)`, `inaccessible`. "Inspected" means read in full at this revision, not that every call has been traced.
 
 ## Summary
 
@@ -24,11 +24,11 @@ Revision: `main` @ `5ff58a7`. Last updated: batch 12, AUDIT (2026-10-09). Every 
 | `server/pkg/dotenv/parser.go` | S2 | inspected | `parse`, `lineRE`; no-op replace at L16 (Q17) | 02 |
 | `server/pkg/dotenv/dotenv_test.go`, `parser_test.go` | S2 | partially inspected | `TestLoad` read; `TestDecode` URL and override cases read; `TestParse` not read | 02 |
 | `server/internal/handler/handler.go` | S3 | inspected | `Handler`, `New`, `Routes`, `newDevServerProxy` | 00, 01 |
-| `server/internal/handler/auth.go` | S3 | inspected | `authEdupass`, `authEdupassCallback`, `safeReturnTo`, `loginFailedURL`, session keys | workflows/edupass-sign-in |
+| `server/internal/handler/auth.go` | S3 | inspected | `authEdupass`, `authEdupassCallback`, `safeReturnTo`, `loginFailedURL`, session keys; since sync `abe5457`: `resolveEdupassGroups`, `edupassGroups`, `isRecognizedEdupassRole`, `isRecognizedEdupassAttribute`, `isMKSchoolCode`, `codeAfterInfix`, `hasEdupassAppCode` (diff read in full) | workflows/edupass-sign-in |
 | `server/internal/handler/auth_test.go` | S3 | partially inspected | all case names reviewed; some bodies sampled | workflows/edupass-sign-in |
 | `server/internal/handler/index.go` | S3 | inspected | `PreloadedState`, `Remote`, `index()`, `static` | subsystems/page-render |
 | `server/internal/handler/index_test.go` | S3 | partially inspected | case names reviewed; CSRF embedding case read | subsystems/page-render |
-| `server/internal/handler/proxy.go` | S3 | inspected | `proxy()`, `remoteBackend`, `newRemoteBackendProxy` (Rewrite, ModifyResponse, ErrorHandler) | workflows/api-proxy |
+| `server/internal/handler/proxy.go` | S3 | inspected | `proxy()` (session-user check and role claims since #212), `remoteBackend`, `newRemoteBackendProxy` (Rewrite, ModifyResponse, ErrorHandler) | workflows/api-proxy |
 | `server/internal/handler/proxy_test.go` | S3 | partially inspected | case names reviewed; JWT claims test read | workflows/api-proxy |
 | `server/internal/handler/handler_test.go` | S3 | inspected | package clause only (`package handler`) |  |
 | `server/internal/middleware/middleware.go` | S4 | inspected | `Middleware`, `Chain` (first = outermost) | 02 |
@@ -74,8 +74,8 @@ Revision: `main` @ `5ff58a7`. Last updated: batch 12, AUDIT (2026-10-09). Every 
 
 | Path | Status | Notes |
 | --- | --- | --- | --- |
-| `package.json`, `README.md`, `src/index.ts`, `src/app.ts` | inspected | auto-login, 8 fake accounts per README |
-| `src/config.ts`, `src/provider.ts` | inspected | `loadConfig`; `createProvider`, `accounts` (8 fixtures), PS256 + `x5t#S256` check, PKCE required, `account` extra param |
+| `package.json`, `README.md`, `src/index.ts`, `src/app.ts` | inspected | auto-login, 10 fake accounts per README (sync `abe5457`) |
+| `src/config.ts`, `src/provider.ts` | inspected | `loadConfig`; `createProvider`, `accounts` (10 fixtures, `id`/`name`/`cesEmail`/`groups` since sync `abe5457`), PS256 + `x5t#S256` check, PKCE required, `account` extra param |
 | `test/api.test.ts` (~57 KB) | partially inspected | case names reviewed |
 | `test/config.test.ts` | partially inspected | case names reviewed | 09 |
 | `test/helpers.ts` | inspected | PKCE helpers, cookie-aware `OidcClient` for the API tests |
@@ -86,7 +86,7 @@ Revision: `main` @ `5ff58a7`. Last updated: batch 12, AUDIT (2026-10-09). Every 
 | Path | Status |
 | --- | --- |
 | `Dockerfile`, `.dockerignore`, `compose.yml` | inspected |
-| `.github/workflows/ci.yml`, `.github/workflows/release.yml`, `.github/PULL_REQUEST_TEMPLATE.md` | inspected |
+| `.github/workflows/ci.yml`, `.github/workflows/release.yml`, `.github/PULL_REQUEST_TEMPLATE.md`, `.github/CODEOWNERS` (added #223) | inspected |
 | `go.mod`, `package.json`, `pnpm-workspace.yaml`, `mise.toml`, `lefthook.yml`, `.golangci.yaml`, `.gitignore` | inspected |
 | `.env.example` | inspected (keys and comments; values not reproduced) |
 | `.vscode/settings.json` | inspected |
